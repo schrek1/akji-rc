@@ -10,29 +10,38 @@
 
 set -euo pipefail
 
+# --- LOGGING HELPERS ---
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $*"
+}
+
+log_err() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ERROR: $*" >&2
+}
+
 # --- DIRECTORY SETUP ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CAPTURES_DIR="$SCRIPT_DIR/captures"
 
 # --- CONFIGURATION ---
-# Load local .env or .env.local if exists (for local testing)
-# Using a temp file to avoid SC1091 and to see what's happening
-for env_file in "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.local" "$(pwd)/.env" "$(pwd)/.env.local"; do
+# Load local .env if it exists.
+# Variables from files will NOT override existing environment variables.
+# Priority: ENV > .env
+for env_file in "$SCRIPT_DIR/.env" "$(pwd)/.env"; do
     if [[ -f "$env_file" ]]; then
-        # echo "Loading $env_file"
         # shellcheck disable=SC1091
         source "$env_file"
     fi
 done
 
-WEBCAM_URL="${WEBCAM_URL:-http://01089001.pfw.ji.cz:16170/channel2}"
-USER="${WEBCAM_USER:-akji}"
-PASS="${WEBCAM_PASS:-akji}"
+WEBCAM_URL="${WEBCAM_URL:-}"
+USER="${WEBCAM_USER:-}"
+PASS="${WEBCAM_PASS:-}"
 TIMEOUT=5
 # Seconds to capture MJPEG data to ensure we have at least one complete frame
 CAPTURE_WINDOW=2
 DEFAULT_INTERVAL=15
 
-CAPTURES_DIR="$SCRIPT_DIR/captures"
 # Using PID-unique name for the temp buffer to prevent conflicts
 TMP_MJPEG="${TMPDIR:-/tmp}/stream_capture_$$.mjpg"
 
@@ -58,33 +67,34 @@ If no options are provided, the script captures a single image and exits.
 EOF
 }
 
-# --- LOGGING HELPERS ---
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $*"
-}
-
-log_err() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ERROR: $*" >&2
-}
-
 # --- IMAGE CAPTURE FUNCTIONS ---
 
-# Downloads a few seconds of MJPEG stream
-# Returns 0 if we got data (even if curl timed out as expected)
+# Downloads a few seconds of MJPEG stream to a temporary file.
+# We download a window of data because MJPEG is a continuous stream and we need 
+# to ensure we capture at least one full JPEG frame (from SOI to EOI).
+# Returns 0 if data was captured, 1 otherwise.
 download_stream() {
     # Using --http0.9 because this camera provides minimal headers.
     # --max-time ensures we don't hang if the camera stops responding.
     # curl will return error code 28 on timeout, so we check if file exists and has size.
+    local auth_args=()
+    if [[ -n "$USER" ]]; then
+        auth_args=("-u" "$USER:$PASS")
+    fi
+
     LC_ALL=C curl --http0.9 -fsSL \
         --connect-timeout "$TIMEOUT" \
         --max-time "$CAPTURE_WINDOW" \
-        -u "$USER:$PASS" \
+        "${auth_args[@]}" \
         "$WEBCAM_URL" \
         -o "$TMP_MJPEG" 2>/dev/null || [[ -s "$TMP_MJPEG" ]]
 }
 
-# Extracts a valid JPEG frame from MJPEG data
-# Returns 0 if saved successfully, 1 otherwise
+# Extracts a valid JPEG frame from MJPEG data.
+# It searches for JPEG markers: SOI (FF D8 FF) and EOI (FF D9).
+# If multiple frames are present, it tries a "middle frame" strategy to avoid 
+# potentially truncated frames at the beginning or end of the capture window.
+# Returns 0 if a valid JPEG was saved, 1 otherwise.
 extract_jpeg() {
     local source_mjpg="$1"
     local output_jpg="$2"
@@ -152,7 +162,7 @@ perform_capture() {
     local output_file="$1"
     
     if ! download_stream; then
-        log_err "Failed to access MJPEG stream at $WEBCAM_URL"
+        log_err "Failed to access MJPEG stream at ${WEBCAM_URL:-[URL NOT SET]}"
         return 1
     fi
     
@@ -204,6 +214,22 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Check if required variables are set
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    if [[ -z "$WEBCAM_URL" ]]; then
+        log_err "WEBCAM_URL is mandatory."
+        exit 1
+    fi
+    if [[ -z "$USER" ]]; then
+        log_err "WEBCAM_USER is mandatory."
+        exit 1
+    fi
+    if [[ -z "$PASS" ]]; then
+        log_err "WEBCAM_PASS is mandatory."
+        exit 1
+    fi
+fi
 
 # --- MAIN EXECUTION ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

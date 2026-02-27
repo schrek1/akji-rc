@@ -26,13 +26,11 @@ log_fail() {
 
 # Move real .env files if they exist to avoid interference
 if [[ -f "$SCRIPT_DIR/.env" ]]; then mv "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.bak"; fi
-if [[ -f "$SCRIPT_DIR/.env.local" ]]; then mv "$SCRIPT_DIR/.env.local" "$SCRIPT_DIR/.env.local.bak"; fi
 
 # Cleanup and setup
 test_cleanup() {
     # Restore .env files
     if [[ -f "$SCRIPT_DIR/.env.bak" ]]; then mv "$SCRIPT_DIR/.env.bak" "$SCRIPT_DIR/.env"; fi
-    if [[ -f "$SCRIPT_DIR/.env.local.bak" ]]; then mv "$SCRIPT_DIR/.env.local.bak" "$SCRIPT_DIR/.env.local"; fi
     
     # On Windows, deleting the directory from within the script might fail if bash has it open.
     if [[ -d "$TEST_WORK_DIR" ]]; then
