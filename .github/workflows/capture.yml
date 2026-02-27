@@ -1,0 +1,59 @@
+name: Capture (Cron 10m)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "*/10 * * * *"
+
+concurrency:
+  group: capture
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Capture frame -> /tmp/frame.jpg
+        shell: bash
+        env:
+          WEBCAM_URL: ${{ vars.WEBCAM_URL }}
+          WEBCAM_USER: ${{ vars.WEBCAM_USER }}
+          WEBCAM_PASS: ${{ secrets.WEBCAM_PASS }}
+        run: |
+          set -euo pipefail
+          chmod +x app/capture.sh
+          bash app/capture.sh --out /tmp/frame.jpg
+      
+      - name: Validate frame
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x app/ci/validate_frame.sh
+          app/ci/validate_frame.sh /tmp/frame.jpg
+      
+      - name: Publish frame (temporary) and get URL
+        id: publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x app/ci/publish_frame.sh
+          url="$(EXPIRY=1h app/ci/publish_frame.sh /tmp/frame.jpg)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      
+      - name: Show image in Job Summary (inline)
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="${{ steps.publish.outputs.url }}"
+          size="$(wc -c < /tmp/frame.jpg | tr -d ' ')"
+          echo "## 📸 Captured Frame" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Size: **${size} bytes**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL (temporary): ${url}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "![frame](${url})" >> "$GITHUB_STEP_SUMMARY"
