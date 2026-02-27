@@ -3,7 +3,7 @@ set -euo pipefail
 
 FILE="${1:-/tmp/frame.jpg}"
 
-log() { printf "[%s] %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"; }
+log() { printf "[%s] %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*" >&2; }
 fail() { log "ERROR: $*"; exit 1; }
 
 test -s "$FILE" || fail "Missing or empty file: $FILE"
