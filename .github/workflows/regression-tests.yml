@@ -10,6 +10,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - uses: actions/checkout@v4
@@ -24,3 +25,12 @@ jobs:
           chmod +x app/test_capture.sh
           chmod +x app/capture.sh
           bash app/test_capture.sh
+
+      - name: Run integration tests
+        env:
+          WEBCAM_URL: ${{ vars.WEBCAM_URL }}
+          WEBCAM_USER: ${{ vars.WEBCAM_USER }}
+          WEBCAM_PASS: ${{ secrets.WEBCAM_PASS }}
+        run: |
+          chmod +x app/test_integration_capture.sh
+          bash app/test_integration_capture.sh
