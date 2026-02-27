@@ -35,12 +35,12 @@ for env_file in "$SCRIPT_DIR/.env" "$(pwd)/.env"; do
 done
 
 WEBCAM_URL="${WEBCAM_URL:-}"
-USER="${WEBCAM_USER:-}"
-PASS="${WEBCAM_PASS:-}"
-TIMEOUT=5
+WEBCAM_USER="${WEBCAM_USER:-}"
+WEBCAM_PASS="${WEBCAM_PASS:-}"
+TIMEOUT="${TIMEOUT:-5}"
 # Seconds to capture MJPEG data to ensure we have at least one complete frame
-CAPTURE_WINDOW=2
-DEFAULT_INTERVAL=15
+CAPTURE_WINDOW="${CAPTURE_WINDOW:-2}"
+DEFAULT_INTERVAL="${DEFAULT_INTERVAL:-15}"
 
 # Using PID-unique name for the temp buffer to prevent conflicts
 TMP_MJPEG="${TMPDIR:-/tmp}/stream_capture_$$.mjpg"
@@ -78,16 +78,31 @@ download_stream() {
     # --max-time ensures we don't hang if the camera stops responding.
     # curl will return error code 28 on timeout, so we check if file exists and has size.
     local auth_args=()
-    if [[ -n "$USER" ]]; then
-        auth_args=("-u" "$USER:$PASS")
+    if [[ -n "$WEBCAM_USER" ]]; then
+        auth_args=("-u" "$WEBCAM_USER:$WEBCAM_PASS")
     fi
 
+    local curl_err_log
+    curl_err_log=$(mktemp)
+    
+    local exit_code=0
     LC_ALL=C curl --http0.9 -fsSL \
         --connect-timeout "$TIMEOUT" \
         --max-time "$CAPTURE_WINDOW" \
         "${auth_args[@]}" \
         "$WEBCAM_URL" \
-        -o "$TMP_MJPEG" 2>/dev/null || [[ -s "$TMP_MJPEG" ]]
+        -o "$TMP_MJPEG" 2>"$curl_err_log" || exit_code=$?
+    
+    if [[ $exit_code -ne 0 ]] && [[ ! -s "$TMP_MJPEG" ]]; then
+        if [[ -s "$curl_err_log" ]]; then
+            log_err "Curl failed (exit code $exit_code): $(cat "$curl_err_log")"
+        fi
+        rm -f "$curl_err_log"
+        return 1
+    fi
+    
+    rm -f "$curl_err_log"
+    return 0
 }
 
 # Extracts a valid JPEG frame from MJPEG data.
@@ -221,11 +236,11 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         log_err "WEBCAM_URL is mandatory."
         exit 1
     fi
-    if [[ -z "$USER" ]]; then
+    if [[ -z "$WEBCAM_USER" ]]; then
         log_err "WEBCAM_USER is mandatory."
         exit 1
     fi
-    if [[ -z "$PASS" ]]; then
+    if [[ -z "$WEBCAM_PASS" ]]; then
         log_err "WEBCAM_PASS is mandatory."
         exit 1
     fi

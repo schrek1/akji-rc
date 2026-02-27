@@ -196,10 +196,10 @@ log_test "Testing ENV variables..."
     # Source to check if they are picked up
     # shellcheck disable=SC1091
     source "$CAPTURE_SCRIPT"
-    if [[ "$WEBCAM_URL" == "http://env-url" ]] && [[ "$USER" == "env-user" ]] && [[ "$PASS" == "env-pass" ]]; then
+    if [[ "$WEBCAM_URL" == "http://env-url" ]] && [[ "$WEBCAM_USER" == "env-user" ]] && [[ "$WEBCAM_PASS" == "env-pass" ]]; then
         log_test "ENV variables OK."
     else
-        log_fail "ENV variables not picked up correctly. URL: $WEBCAM_URL, USER: $USER, PASS: $PASS"
+        log_fail "ENV variables not picked up correctly. URL: $WEBCAM_URL, USER: $WEBCAM_USER, PASS: $WEBCAM_PASS"
     fi
 )
 
@@ -219,11 +219,11 @@ EOF
     # shellcheck disable=SC1091
     source "$CAPTURE_SCRIPT"
     
-    if [[ "$WEBCAM_URL" == "http://dot-env-url" ]] && [[ "$USER" == "dot-env-user" ]] && [[ "$PASS" == "dot-env-pass" ]]; then
+    if [[ "$WEBCAM_URL" == "http://dot-env-url" ]] && [[ "$WEBCAM_USER" == "dot-env-user" ]] && [[ "$WEBCAM_PASS" == "dot-env-pass" ]]; then
         log_test ".env file loading OK."
     else
         log_fail ".env file NOT loaded correctly."
-        log_fail "URL: $WEBCAM_URL, USER: $USER, PASS: $PASS"
+        log_fail "URL: $WEBCAM_URL, USER: $WEBCAM_USER, PASS: $WEBCAM_PASS"
         exit 1
     fi
 )

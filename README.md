@@ -52,19 +52,30 @@ No backend. No UI.
 
 The script loads variables from `.env` files in the script directory or current directory. Direct environment variables have priority.
 
-| Variable      | Description                  | Recommended value                        |
-|---------------|------------------------------|------------------------------------------|
-| `WEBCAM_URL`  | Full URL to the MJPEG stream | http://01089001.pfw.ji.cz:16170/channel2 |
-| `WEBCAM_USER` | Username for basic auth      |                                          |
-| `WEBCAM_PASS` | Password for basic auth      |                                          |
+| Variable           | Description                   | Recommended value                        |
+|--------------------|-------------------------------|------------------------------------------|
+| `WEBCAM_URL`       | Full URL to the MJPEG stream  | http://01089001.pfw.ji.cz:16170/channel2 |
+| `WEBCAM_USER`      | Username for basic auth       |                                          |
+| `WEBCAM_PASS`      | Password for basic auth       |                                          |
+| `TIMEOUT`          | Connection timeout (seconds)  | 5                                        |
+| `CAPTURE_WINDOW`   | Capture duration (seconds)    | 2                                        |
+| `DEFAULT_INTERVAL` | Time-lapse interval (seconds) | 15                                       |
 
 ---
 
 ## Development & Testing
 
-Run regression tests to ensure everything is working correctly:
+Run regression tests (mocks) to ensure everything is working correctly:
 
 ```bash
 bash app/test_capture.sh
+```
+
+### Integration Tests
+
+Run integration tests (requires real webcam access and configured `app/.env`):
+
+```bash
+bash app/test_integration_capture.sh
 ```
 
