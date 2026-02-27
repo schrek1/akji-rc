@@ -10,20 +10,31 @@
 
 set -euo pipefail
 
+# --- DIRECTORY SETUP ---
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # --- CONFIGURATION ---
-MJPEG_URL="http://01089001.pfw.ji.cz:16170/channel2"
-USER="akji"
-PASS="akji"
+# Load local .env or .env.local if exists (for local testing)
+# Using a temp file to avoid SC1091 and to see what's happening
+for env_file in "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.local" "$(pwd)/.env" "$(pwd)/.env.local"; do
+    if [[ -f "$env_file" ]]; then
+        # echo "Loading $env_file"
+        # shellcheck disable=SC1091
+        source "$env_file"
+    fi
+done
+
+WEBCAM_URL="${WEBCAM_URL:-http://01089001.pfw.ji.cz:16170/channel2}"
+USER="${WEBCAM_USER:-akji}"
+PASS="${WEBCAM_PASS:-akji}"
 TIMEOUT=5
 # Seconds to capture MJPEG data to ensure we have at least one complete frame
 CAPTURE_WINDOW=2
 DEFAULT_INTERVAL=15
 
-# --- DIRECTORY SETUP ---
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CAPTURES_DIR="$SCRIPT_DIR/captures"
 # Using PID-unique name for the temp buffer to prevent conflicts
-TMP_MJPEG="$CAPTURES_DIR/stream_capture_$$.mjpg"
+TMP_MJPEG="${TMPDIR:-/tmp}/stream_capture_$$.mjpg"
 
 # --- CLEANUP ON EXIT ---
 cleanup() {
@@ -39,6 +50,7 @@ Usage: $0 [OPTIONS]
 KISS MJPEG webcam capture script. Extracts one still JPEG frame from a stream.
 
 Options:
+  -o, --out <file>       Output file path. (Default: captures/webcam_<TIMESTAMP>.jpg)
   -tl, --timeLapse <N>   Run in loop, capturing every N seconds.
   -h, --help             Show this help message.
 
@@ -67,7 +79,7 @@ download_stream() {
         --connect-timeout "$TIMEOUT" \
         --max-time "$CAPTURE_WINDOW" \
         -u "$USER:$PASS" \
-        "$MJPEG_URL" \
+        "$WEBCAM_URL" \
         -o "$TMP_MJPEG" 2>/dev/null || [[ -s "$TMP_MJPEG" ]]
 }
 
@@ -137,12 +149,10 @@ extract_jpeg() {
 
 # Orchestrates one capture cycle
 perform_capture() {
-    local timestamp
-    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
-    local output_file="$CAPTURES_DIR/webcam_${timestamp}.jpg"
+    local output_file="$1"
     
     if ! download_stream; then
-        log_err "Failed to access MJPEG stream at $MJPEG_URL"
+        log_err "Failed to access MJPEG stream at $WEBCAM_URL"
         return 1
     fi
     
@@ -160,9 +170,19 @@ perform_capture() {
 # --- ARGUMENT PARSING ---
 LOOP_MODE=false
 INTERVAL="$DEFAULT_INTERVAL"
+OUT_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -o|--out)
+            if [[ -n "${2:-}" ]]; then
+                OUT_FILE="$2"
+                shift 2
+            else
+                log_err "$1 requires a filename argument."
+                exit 1
+            fi
+            ;;
         -tl|--timeLapse)
             LOOP_MODE=true
             if [[ -n "${2:-}" && "$2" =~ ^[0-9]+$ ]]; then
@@ -187,11 +207,15 @@ done
 
 # --- MAIN EXECUTION ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    mkdir -p "$CAPTURES_DIR"
-
     if [[ "$LOOP_MODE" == false ]]; then
         # SINGLE RUN
-        if perform_capture; then
+        if [[ -z "$OUT_FILE" ]]; then
+            mkdir -p "$CAPTURES_DIR"
+            timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+            OUT_FILE="$CAPTURES_DIR/webcam_${timestamp}.jpg"
+        fi
+        
+        if perform_capture "$OUT_FILE"; then
             log "Single capture successful."
             exit 0
         else
@@ -200,13 +224,22 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         fi
     else
         # TIME-LAPSE LOOP
+        if [[ -n "$OUT_FILE" ]]; then
+            log_err "Error: --out is not compatible with --timeLapse."
+            exit 1
+        fi
+        mkdir -p "$CAPTURES_DIR"
+        
         log "Time-lapse enabled (Interval: ${INTERVAL}s). Press Ctrl+C to stop."
         
         next_tick=$(date +%s)
         while true; do
             now=$(date +%s)
             
-            if perform_capture; then
+            timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+            current_out="$CAPTURES_DIR/webcam_${timestamp}.jpg"
+            
+            if perform_capture "$current_out"; then
                 log "Capture successful."
             else
                 log_err "Capture cycle failed."

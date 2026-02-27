@@ -20,13 +20,28 @@ log_test() {
 
 log_fail() {
     echo -e "${RED}[FAIL]${NC} $*"
+    test_cleanup
+    exit 1
 }
 
+# Move real .env files if they exist to avoid interference
+if [[ -f "$SCRIPT_DIR/.env" ]]; then mv "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.bak"; fi
+if [[ -f "$SCRIPT_DIR/.env.local" ]]; then mv "$SCRIPT_DIR/.env.local" "$SCRIPT_DIR/.env.local.bak"; fi
+
 # Cleanup and setup
-cleanup() {
-    rm -rf "$TEST_WORK_DIR"
+test_cleanup() {
+    # Restore .env files
+    if [[ -f "$SCRIPT_DIR/.env.bak" ]]; then mv "$SCRIPT_DIR/.env.bak" "$SCRIPT_DIR/.env"; fi
+    if [[ -f "$SCRIPT_DIR/.env.local.bak" ]]; then mv "$SCRIPT_DIR/.env.local.bak" "$SCRIPT_DIR/.env.local"; fi
+    
+    # On Windows, deleting the directory from within the script might fail if bash has it open.
+    if [[ -d "$TEST_WORK_DIR" ]]; then
+        cd "$SCRIPT_DIR" || exit
+        rm -rf "$TEST_WORK_DIR"
+    fi
 }
-trap cleanup EXIT
+trap test_cleanup EXIT
+trap test_cleanup SIGINT SIGTERM
 
 mkdir -p "$TEST_WORK_DIR"
 
@@ -154,5 +169,106 @@ else
     exit 1
 fi
 
+# 6. Test --out parameter
+log_test "Testing --out parameter..."
+OUT_TEST_FILE="$TEST_WORK_DIR/custom_out.jpg"
+(
+    # We can't easily mock functions when running 'bash script.sh'
+    # But we can test the argument parsing block by sourcing.
+    OUT_FILE=""
+    set -- --out "$OUT_TEST_FILE"
+    # shellcheck disable=SC1091
+    source "$CAPTURE_SCRIPT"
+    if [[ "$OUT_FILE" == "$OUT_TEST_FILE" ]]; then
+        log_test "--out parameter parsing OK."
+    else
+        log_fail "--out parameter parsing failed. OUT_FILE=$OUT_FILE"
+        exit 1
+    fi
+)
+
+# 7. Test ENV variables
+log_test "Testing ENV variables..."
+(
+    # Clear vars to ensure they come from ENV
+    unset WEBCAM_URL WEBCAM_USER WEBCAM_PASS USER PASS
+    export WEBCAM_URL="http://env-url"
+    export WEBCAM_USER="env-user"
+    export WEBCAM_PASS="env-pass"
+    # Source to check if they are picked up
+    # shellcheck disable=SC1091
+    source "$CAPTURE_SCRIPT"
+    if [[ "$WEBCAM_URL" == "http://env-url" ]] && [[ "$USER" == "env-user" ]] && [[ "$PASS" == "env-pass" ]]; then
+        log_test "ENV variables OK."
+    else
+        log_fail "ENV variables not picked up correctly. URL: $WEBCAM_URL, USER: $USER, PASS: $PASS"
+    fi
+)
+
+# 8. Test .env file loading
+log_test "Testing .env file loading..."
+(
+    cat <<EOF > "$TEST_WORK_DIR/.env"
+WEBCAM_URL="http://dot-env-url"
+WEBCAM_USER="dot-env-user"
+WEBCAM_PASS="dot-env-pass"
+EOF
+    # Go to the directory where .env is
+    cd "$TEST_WORK_DIR"
+    
+    # Source the script from the test work dir (where .env is)
+    # The script should pick up $(pwd)/.env
+    # shellcheck disable=SC1091
+    source "$CAPTURE_SCRIPT"
+    
+    if [[ "$WEBCAM_URL" == "http://dot-env-url" ]] && [[ "$USER" == "dot-env-user" ]] && [[ "$PASS" == "dot-env-pass" ]]; then
+        log_test ".env file loading OK."
+    else
+        log_fail ".env file NOT loaded correctly."
+        log_fail "URL: $WEBCAM_URL, USER: $USER, PASS: $PASS"
+        exit 1
+    fi
+)
+
+# 9. Test CI usage (no captures/ dir)
+log_test "Testing CI usage (no captures/ directory)..."
+CI_OUT_FILE="$TEST_WORK_DIR/ci_test.jpg"
+(
+    # Using a fake TMPDIR to ensure TMP_MJPEG is also elsewhere
+    export TMPDIR="$TEST_WORK_DIR"
+    
+    # Mock curl to avoid network access
+    # Since we are on Windows, we need to be careful with paths and how bash executes things.
+    # In Git Bash environment, we can create a mock curl script.
+    mkdir -p "$TEST_WORK_DIR/bin"
+    # shellcheck disable=SC2016
+    printf '#!/usr/bin/env bash\nfor arg in "$@"; do if [[ "$arg" == */stream_capture_*.mjpg ]]; then out="$arg"; fi; done\necho -en "\\xff\\xd8\\xffCI_DATA\\xff\\xd9" > "$out"\nexit 0' > "$TEST_WORK_DIR/bin/curl"
+    chmod +x "$TEST_WORK_DIR/bin/curl"
+    export PATH="$TEST_WORK_DIR/bin:$PATH"
+    
+    # Run in a clean environment (no 'captures' dir in current work dir)
+    mkdir -p "$TEST_WORK_DIR/run"
+    cd "$TEST_WORK_DIR/run"
+    
+    # We must call it with full path or from its dir since we changed directory
+    if WEBCAM_URL="mock" WEBCAM_USER="mock" WEBCAM_PASS="mock" bash "$CAPTURE_SCRIPT" --out "$CI_OUT_FILE"; then
+        if [[ -s "$CI_OUT_FILE" ]]; then
+            log_test "CI usage with --out successful."
+        else
+            log_fail "CI output file empty."
+        fi
+    else
+        log_fail "CI usage failed."
+    fi
+    
+    # Check that 'captures/' was not created in the current directory
+    if [[ ! -d "captures" ]]; then
+        log_test "captures/ directory was NOT created (as expected)."
+    else
+        log_fail "captures/ directory WAS created in $(pwd)."
+    fi
+)
+
 log_test "All regression tests passed!"
+test_cleanup
 exit 0
