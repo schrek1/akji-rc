@@ -1,0 +1,26 @@
+name: Regression Tests
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl grep coreutils
+
+      - name: Run regression tests
+        run: |
+          chmod +x app/test_capture.sh
+          chmod +x app/capture.sh
+          bash app/test_capture.sh
