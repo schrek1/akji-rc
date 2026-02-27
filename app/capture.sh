@@ -39,7 +39,7 @@ WEBCAM_USER="${WEBCAM_USER:-}"
 WEBCAM_PASS="${WEBCAM_PASS:-}"
 TIMEOUT="${TIMEOUT:-5}"
 # Seconds to capture MJPEG data to ensure we have at least one complete frame
-CAPTURE_WINDOW="${CAPTURE_WINDOW:-2}"
+CAPTURE_WINDOW="${CAPTURE_WINDOW:-3}"
 DEFAULT_INTERVAL="${DEFAULT_INTERVAL:-15}"
 
 # Using PID-unique name for the temp buffer to prevent conflicts
@@ -96,9 +96,17 @@ download_stream() {
     if [[ $exit_code -ne 0 ]] && [[ ! -s "$TMP_MJPEG" ]]; then
         if [[ -s "$curl_err_log" ]]; then
             log_err "Curl failed (exit code $exit_code): $(cat "$curl_err_log")"
+        else
+            log_err "Curl failed with exit code $exit_code (no error message)."
         fi
         rm -f "$curl_err_log"
         return 1
+    fi
+    
+    if [[ -s "$TMP_MJPEG" ]]; then
+        local size
+        size=$(wc -c < "$TMP_MJPEG" | tr -d ' ')
+        log "Downloaded $size bytes from MJPEG stream."
     fi
     
     rm -f "$curl_err_log"
@@ -120,15 +128,17 @@ extract_jpeg() {
     sois=$(LC_ALL=C grep -a -b -o $'\xff\xd8\xff' "$source_mjpg" | cut -d: -f1) || true
     eois=$(LC_ALL=C grep -a -b -o $'\xff\xd9' "$source_mjpg" | cut -d: -f1) || true
     
+    local num_sois num_eois
+    num_sois=$(echo "$sois" | grep -c . || echo 0)
+    num_eois=$(echo "$eois" | grep -c . || echo 0)
+
     if [[ -z "$sois" ]] || [[ -z "$eois" ]]; then
+        log_err "Could not find enough JPEG markers (SOI: $num_sois, EOI: $num_eois)."
         return 1
     fi
     
     # Try the 'middle' frame strategy: frames in the middle are less likely to be 
     # truncated by the network/buffer window.
-    local num_sois
-    num_sois=$(echo "$sois" | grep -c . || echo 0)
-    
     local -a target_indices
     local mid=$((num_sois / 2))
     [[ $mid -lt 1 ]] && mid=1
