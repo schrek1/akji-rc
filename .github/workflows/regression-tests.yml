@@ -15,6 +15,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify Go binary execution
+        run: |
+          set -euo pipefail
+          go test ./...
+          go build -o "$RUNNER_TEMP/akji-probe" ./cmd/akji-probe
+          "$RUNNER_TEMP/akji-probe"
+
       - name: Setup environment
         run: |
           sudo apt-get update
