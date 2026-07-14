@@ -18,6 +18,9 @@ type webcamEndpoint struct {
 	requestPath    string
 }
 
+// DownloadMJPEGStream speaks minimal HTTP/1.0 over a raw TCP socket instead of using net/http,
+// because the target cameras serve an HTTP/0.9-style MJPEG stream with minimal/no response headers
+// that net/http rejects. Mirrors the legacy `curl --http0.9` behavior.
 func DownloadMJPEGStream(config Configuration) ([]byte, error) {
 	endpoint, err := parseWebcamEndpoint(config.WebcamURL)
 	if err != nil {
