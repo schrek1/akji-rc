@@ -12,51 +12,94 @@ import (
 	"time"
 )
 
+type webcamEndpoint struct {
+	connectionHost string
+	requestHost    string
+	requestPath    string
+}
+
 func DownloadStream(config CapturingConfiguration) ([]byte, error) {
-	parsedURL, err := url.Parse(config.WebcamURL)
+	endpoint, err := parseWebcamEndpoint(config.WebcamURL)
 	if err != nil {
 		return nil, err
+	}
+
+	connection, err := openWebcamConnection(endpoint, config.Timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer connection.Close()
+
+	if err := setCaptureDeadline(connection, config.CaptureWindow); err != nil {
+		return nil, err
+	}
+
+	request := createMJPEGRequest(endpoint, config)
+	return downloadMJPEGResponse(connection, request)
+}
+
+func parseWebcamEndpoint(webcamURL string) (webcamEndpoint, error) {
+	parsedURL, err := url.Parse(webcamURL)
+	if err != nil {
+		return webcamEndpoint{}, err
 	}
 	if parsedURL.Scheme != "http" {
-		return nil, fmt.Errorf("unsupported webcam URL scheme %q", parsedURL.Scheme)
+		return webcamEndpoint{}, fmt.Errorf("unsupported webcam URL scheme %q", parsedURL.Scheme)
 	}
 
-	host := parsedURL.Host
-	if !strings.Contains(host, ":") {
-		host += ":80"
-	}
+	return webcamEndpoint{
+		connectionHost: connectionHost(parsedURL),
+		requestHost:    parsedURL.Host,
+		requestPath:    requestPath(parsedURL),
+	}, nil
+}
 
-	conn, err := net.DialTimeout("tcp", host, config.Timeout)
-	if err != nil {
-		return nil, err
+func connectionHost(parsedURL *url.URL) string {
+	if strings.Contains(parsedURL.Host, ":") {
+		return parsedURL.Host
 	}
-	defer conn.Close()
+	return parsedURL.Host + ":80"
+}
 
-	if err := conn.SetDeadline(time.Now().Add(config.CaptureWindow)); err != nil {
-		return nil, err
+func requestPath(parsedURL *url.URL) string {
+	if parsedURL.RequestURI() == "" {
+		return "/"
 	}
+	return parsedURL.RequestURI()
+}
 
-	path := parsedURL.RequestURI()
-	if path == "" {
-		path = "/"
-	}
+func openWebcamConnection(endpoint webcamEndpoint, timeout time.Duration) (net.Conn, error) {
+	return net.DialTimeout("tcp", endpoint.connectionHost, timeout)
+}
 
-	request := fmt.Sprintf("GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n", path, parsedURL.Host)
+func setCaptureDeadline(connection net.Conn, captureWindow time.Duration) error {
+	return connection.SetDeadline(time.Now().Add(captureWindow))
+}
+
+func createMJPEGRequest(endpoint webcamEndpoint, config CapturingConfiguration) string {
+	request := fmt.Sprintf("GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n", endpoint.requestPath, endpoint.requestHost)
 	if config.WebcamUser != "" {
-		token := base64.StdEncoding.EncodeToString([]byte(config.WebcamUser + ":" + config.WebcamPass))
-		request += "Authorization: Basic " + token + "\r\n"
+		request += basicAuthorizationHeader(config.WebcamUser, config.WebcamPass)
 	}
-	request += "\r\n"
+	return request + "\r\n"
+}
 
-	if _, err := io.WriteString(conn, request); err != nil {
+func basicAuthorizationHeader(user string, pass string) string {
+	credentials := user + ":" + pass
+	token := base64.StdEncoding.EncodeToString([]byte(credentials))
+	return "Authorization: Basic " + token + "\r\n"
+}
+
+func downloadMJPEGResponse(connection net.Conn, request string) ([]byte, error) {
+	if _, err := io.WriteString(connection, request); err != nil {
 		return nil, err
 	}
 
-	body, err := readUntilDeadline(conn)
-	if err != nil && len(body) == 0 {
+	response, err := readUntilDeadline(connection)
+	if err != nil && len(response) == 0 {
 		return nil, err
 	}
-	return stripHTTPHeaders(body), nil
+	return stripHTTPHeaders(response), nil
 }
 
 func readUntilDeadline(reader io.Reader) ([]byte, error) {
