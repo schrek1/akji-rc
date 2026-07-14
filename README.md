@@ -1,81 +1,79 @@
-# akji-rc (AKJI Runway Chronicles)
+# AKJI Runway Chronicles
 
-Minimal MVP: periodically capture one JPEG snapshot from an MJPEG webcam and prepare it for upload.
+AKJI Runway Chronicles periodically captures a JPEG frame from an MJPEG webcam, validates it, and publishes a temporary public URL.
 
-No backend. No UI.
+The runtime pipeline is implemented in Go:
 
----
+1. `akji-capture` saves a JPEG frame.
+2. `akji-validate` verifies the frame before publishing.
+3. `akji-publish` uploads the frame to temporary Uguu hosting and writes its URL to stdout.
 
-## MVP1 Scope
+There is no backend or UI in the current MVP.
 
-- `app/capture.sh` extracts a valid JPEG frame from an MJPEG stream.
-- Supports single capture and time-lapse mode.
-- Configurable via environment variables or `.env` files.
-- GitHub Actions ready (works without local `captures/` directory if `--out` is used).
+## Requirements
 
----
+- Go version declared in `go.mod`
+- Webcam credentials in `.env` or process environment variables
 
 ## Local Run
 
-### Requirements
+1. Configure credentials:
 
-- `bash` (version 4+)
-- `curl` (with HTTP 0.9 support)
-- `grep`, `dd`, `od`, `tail` (standard coreutils)
-
-### Quick Start
-
-1. **Configure credentials:**
-   Copy the template and edit it with your webcam details:
    ```bash
-   cp app/.env.template app/.env
-   # Edit app/.env with your WEBCAM_URL, WEBCAM_USER, and WEBCAM_PASS
+   cp .env.example .env
    ```
 
-2. **Run a single capture:**
+2. Capture a frame:
+
    ```bash
-   bash app/capture.sh
-   # Image will be saved to app/captures/webcam_<TIMESTAMP>.jpg
+   go run ./cmd/akji-capture
    ```
 
-3. **Capture to a specific file:**
+   The default output is `captures/webcam_<TIMESTAMP>.jpg`.
+
+3. Capture to a specific file:
+
    ```bash
-   bash app/capture.sh --out my_frame.jpg
+   go run ./cmd/akji-capture --out my_frame.jpg
    ```
 
-4. **Run time-lapse (every 30 seconds):**
+4. Run time-lapse capture every 30 seconds:
+
    ```bash
-   bash app/capture.sh --timeLapse 30
+   go run ./cmd/akji-capture --timeLapse 30
    ```
 
-### Configuration (Environment Variables)
+5. Validate and publish a captured file:
 
-The script loads variables from `.env` files in the script directory or current directory. Direct environment variables have priority.
+   ```bash
+   go run ./cmd/akji-validate my_frame.jpg
+   go run ./cmd/akji-publish my_frame.jpg
+   ```
 
-| Variable           | Description                   | Recommended value                        |
-|--------------------|-------------------------------|------------------------------------------|
-| `WEBCAM_URL`       | Full URL to the MJPEG stream  | http://01089001.pfw.ji.cz:16170/channel2 |
-| `WEBCAM_USER`      | Username for basic auth       |                                          |
-| `WEBCAM_PASS`      | Password for basic auth       |                                          |
-| `TIMEOUT`          | Connection timeout (seconds)  | 5                                        |
-| `CAPTURE_WINDOW`   | Capture duration (seconds)    | 2                                        |
-| `DEFAULT_INTERVAL` | Time-lapse interval (seconds) | 15                                       |
+## Configuration
 
----
+`.env` provides local defaults for `akji-capture`. Explicit process environment variables override it, which keeps CI and deployment secrets outside the repository.
 
-## Development & Testing
+| Variable | Description | Default |
+| --- | --- | --- |
+| `WEBCAM_URL` | Full MJPEG stream URL | Required |
+| `WEBCAM_USER` | Basic-auth username | Required |
+| `WEBCAM_PASS` | Basic-auth password | Required |
+| `TIMEOUT` | Connection timeout in seconds | `5` |
+| `CAPTURE_WINDOW` | MJPEG capture window in seconds | `3` |
 
-Run regression tests (mocks) to ensure everything is working correctly:
+`akji-validate` reads `MIN_SIZE_BYTES` directly from the process environment; its default is `15000`.
+
+## Development
 
 ```bash
-bash app/test_capture.sh
+go test ./...
+go vet ./...
+go build ./cmd/...
 ```
 
-### Integration Tests
+GitHub Actions runs the same Go test suite and performs an integration capture against the configured webcam. The scheduled capture workflow builds and runs all three Go commands.
 
-Run integration tests (requires real webcam access and configured `app/.env`):
+## Direction
 
-```bash
-bash app/test_integration_capture.sh
-```
-
+The core pipeline is Go. A future lightweight UI, when needed, will use Svelte. S3-compatible storage, including Cloudflare R2, remains the intended replacement for the temporary Uguu publisher.

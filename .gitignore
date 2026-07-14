@@ -1,10 +1,12 @@
 # Output directory
 out/
 **/out/
+captures/
 
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Local Go binaries
 *.exe

@@ -36,7 +36,7 @@ func extractPreferredJPEGFrame(source []byte, startOffsets []int, endOffsets []i
 }
 
 func preferredJPEGStartOffsets(startOffsets []int) []int {
-	// Preserve the legacy shell selection order: favor an interior frame, then retry from the first frame.
+	// Favor an interior frame, then retry from the first frame.
 	// This reduces the chance of extracting a partial frame from either edge of a captured stream chunk.
 	preferredIndex := len(startOffsets)/2 - 1
 	if preferredIndex < 0 {
