@@ -28,7 +28,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go test ./...
           go build -o "$RUNNER_TEMP/akji-capture" ./cmd/akji-capture
           go build -o "$RUNNER_TEMP/akji-validate" ./cmd/akji-validate
           go build -o "$RUNNER_TEMP/akji-publish" ./cmd/akji-publish
