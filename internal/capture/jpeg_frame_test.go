@@ -34,7 +34,7 @@ func TestExtractJPEGFrame_missingEOI_returnsError(t *testing.T) {
 	}
 }
 
-func TestExtractJPEGFrame_multipleFrames_picksSameMiddleFrameAsShellScript(t *testing.T) {
+func TestExtractJPEGFrame_multipleFrames_picksPreferredInteriorFrame(t *testing.T) {
 	source := []byte("AA\xff\xd8\xffF1\xff\xd9BB\xff\xd8\xffF2\xff\xd9CC\xff\xd8\xffF3\xff\xd9DD\xff\xd8\xffF4\xff\xd9")
 
 	frame, err := ExtractJPEGFrame(source)
@@ -60,9 +60,9 @@ func TestExtractJPEGFrame_ciMockData_extractsFrame(t *testing.T) {
 	}
 }
 
-func TestMarkerOffsets_adjacentMarkers_countedNonOverlappingLikeShell(t *testing.T) {
+func TestMarkerOffsets_adjacentMarkers_countsNonOverlappingMarkers(t *testing.T) {
 	// A naive one-byte advance would report an overlapping SOI at offset 2;
-	// the shell `grep -o` scan counts non-overlapping markers only.
+	// JPEG markers must be counted without overlap.
 	source := []byte("\xff\xd8\xff\xd8\xff")
 
 	offsets := markerOffsets(source, jpegSOI)

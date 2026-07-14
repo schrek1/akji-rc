@@ -2,17 +2,17 @@
 
 ## Objective
 
-Migrate the AKJI Runway Chronicles core capture pipeline from Bash scripts to Go in small, mergeable slices. The goal is a codebase that is easier to read, test, maintain, and extend manually while keeping the current pipeline behavior stable during the migration.
+Migrate the AKJI Runway Chronicles core capture pipeline from Bash scripts to Go in small, mergeable slices. The migration is complete: the codebase is easier to read, test, maintain, and extend manually while preserving the pipeline behavior.
 
 The long-term product direction is a lightweight Go + Svelte stack. This feature covers the Go migration of the current script-based core only; Svelte implementation is documented as future direction, not part of this feature.
 
 ## Current state
 
-The repository currently contains a minimal Bash-based MVP:
+The repository now contains a minimal Go-based MVP:
 
-* `app/capture.sh` captures a JPEG frame from an MJPEG webcam stream.
-* `app/ci/validate_frame.sh` validates the captured JPEG.
-* `app/ci/publish_frame.sh` uploads the frame to a temporary public file host.
+* `cmd/akji-capture` captures a JPEG frame from an MJPEG webcam stream.
+* `cmd/akji-validate` validates the captured JPEG.
+* `cmd/akji-publish` uploads the frame to a temporary public file host.
 * GitHub Actions runs the pipeline on `ubuntu-latest`.
 
 ## Target state
@@ -49,4 +49,4 @@ Each subplan should be implemented in its own feature branch and merged independ
 
 ## Definition of done
 
-The feature is complete when the scheduled capture workflow runs the Go-based capture, validate, and publish commands end to end, replaced Bash scripts are removed, and README/docs describe the Go-based pipeline and future Go + Svelte direction.
+The feature is complete: the scheduled capture workflow runs the Go-based capture, validate, and publish commands end to end; replaced Bash scripts are removed; and README/docs describe the Go-based pipeline and future Go + Svelte direction.
