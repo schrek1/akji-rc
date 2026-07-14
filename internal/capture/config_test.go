@@ -50,3 +50,45 @@ func TestLoadConfig_missingRequiredValues_returnsError(t *testing.T) {
 		t.Fatal("LoadConfig() error = nil")
 	}
 }
+
+func TestLoadConfig_missingTimingValues_usesDefaults(t *testing.T) {
+	capturingConfiguration, err := LoadConfig(validConfigurationValues(), t.TempDir())
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if capturingConfiguration.Timeout != 5*time.Second {
+		t.Errorf("Timeout = %v, want %v", capturingConfiguration.Timeout, 5*time.Second)
+	}
+	if capturingConfiguration.CaptureWindow != 3*time.Second {
+		t.Errorf("CaptureWindow = %v, want %v", capturingConfiguration.CaptureWindow, 3*time.Second)
+	}
+}
+
+func TestLoadConfig_invalidTimeout_returnsError(t *testing.T) {
+	configurationValues := validConfigurationValues()
+	configurationValues["TIMEOUT"] = "invalid"
+
+	_, err := LoadConfig(configurationValues, t.TempDir())
+	if err == nil {
+		t.Fatal("LoadConfig() error = nil")
+	}
+}
+
+func TestLoadConfig_invalidCaptureWindow_returnsError(t *testing.T) {
+	configurationValues := validConfigurationValues()
+	configurationValues["CAPTURE_WINDOW"] = "0"
+
+	_, err := LoadConfig(configurationValues, t.TempDir())
+	if err == nil {
+		t.Fatal("LoadConfig() error = nil")
+	}
+}
+
+func validConfigurationValues() EnvConfigValues {
+	return EnvConfigValues{
+		"WEBCAM_URL":  "http://camera",
+		"WEBCAM_USER": "user",
+		"WEBCAM_PASS": "pass",
+	}
+}

@@ -17,38 +17,62 @@ type CapturingConfiguration struct {
 	CaptureWindow time.Duration
 }
 
-func LoadConfig(env map[string]string, workDir string) (CapturingConfiguration, error) {
-	values, err := loadConfigurationValues(env, workDir)
+type webcamSettings struct {
+	url  string
+	user string
+	pass string
+}
+
+type captureTiming struct {
+	timeout       time.Duration
+	captureWindow time.Duration
+}
+
+func LoadConfig(environmentValues EnvConfigValues, workDir string) (CapturingConfiguration, error) {
+	configurationValues, err := loadConfigurationValues(environmentValues, workDir)
 	if err != nil {
 		return CapturingConfiguration{}, err
 	}
 
-	return configurationFromValues(values)
+	return createCapturingConfiguration(configurationValues)
 }
 
-func loadConfigurationValues(env map[string]string, workDir string) (map[string]string, error) {
-	values := map[string]string{}
-	for _, envFile := range []string{
-		filepath.Join(workDir, "app", ".env"),
-		filepath.Join(workDir, ".env"),
-	} {
-		fileValues, err := readEnvFile(envFile)
+func loadConfigurationValues(environmentValues EnvConfigValues, workDir string) (EnvConfigValues, error) {
+	configurationValues, err := loadConfigurationValuesFromFiles(workDir)
+	if err != nil {
+		return nil, err
+	}
+
+	mergeNonEmptyEnvironmentValues(configurationValues, environmentValues)
+	return configurationValues, nil
+}
+
+func loadConfigurationValuesFromFiles(workDir string) (EnvConfigValues, error) {
+	configurationValues := EnvConfigValues{}
+	for _, configurationFilePath := range configurationFilePaths(workDir) {
+		fileValues, err := readEnvFile(configurationFilePath)
 		if err != nil {
 			return nil, err
 		}
-		mergeValues(values, fileValues)
+		mergeConfigurationValues(configurationValues, fileValues)
 	}
-	mergeNonEmptyValues(values, env)
-	return values, nil
+	return configurationValues, nil
 }
 
-func mergeValues(target map[string]string, source map[string]string) {
+func configurationFilePaths(workDir string) []string {
+	return []string{
+		filepath.Join(workDir, "app", ".env"),
+		filepath.Join(workDir, ".env"),
+	}
+}
+
+func mergeConfigurationValues(target EnvConfigValues, source EnvConfigValues) {
 	for key, value := range source {
 		target[key] = value
 	}
 }
 
-func mergeNonEmptyValues(target map[string]string, source map[string]string) {
+func mergeNonEmptyEnvironmentValues(target EnvConfigValues, source EnvConfigValues) {
 	for key, value := range source {
 		if value != "" {
 			target[key] = value
@@ -56,64 +80,92 @@ func mergeNonEmptyValues(target map[string]string, source map[string]string) {
 	}
 }
 
-func configurationFromValues(values map[string]string) (CapturingConfiguration, error) {
-	timeout, err := durationValue(values, "TIMEOUT", 5)
-	if err != nil {
-		return CapturingConfiguration{}, fmt.Errorf("invalid TIMEOUT: %w", err)
-	}
-	captureWindow, err := durationValue(values, "CAPTURE_WINDOW", 3)
-	if err != nil {
-		return CapturingConfiguration{}, fmt.Errorf("invalid CAPTURE_WINDOW: %w", err)
-	}
-
-	webcamURL, err := requiredValue(values, "WEBCAM_URL")
+func createCapturingConfiguration(configurationValues EnvConfigValues) (CapturingConfiguration, error) {
+	webcam, err := loadWebcamSettings(configurationValues)
 	if err != nil {
 		return CapturingConfiguration{}, err
 	}
-	webcamUser, err := requiredValue(values, "WEBCAM_USER")
-	if err != nil {
-		return CapturingConfiguration{}, err
-	}
-	webcamPass, err := requiredValue(values, "WEBCAM_PASS")
+	timing, err := loadCaptureTiming(configurationValues)
 	if err != nil {
 		return CapturingConfiguration{}, err
 	}
 
 	return CapturingConfiguration{
-		WebcamURL:     webcamURL,
-		WebcamUser:    webcamUser,
-		WebcamPass:    webcamPass,
-		Timeout:       timeout,
-		CaptureWindow: captureWindow,
+		WebcamURL:     webcam.url,
+		WebcamUser:    webcam.user,
+		WebcamPass:    webcam.pass,
+		Timeout:       timing.timeout,
+		CaptureWindow: timing.captureWindow,
 	}, nil
 }
 
-func durationValue(values map[string]string, key string, fallback int) (time.Duration, error) {
-	return secondsValue(values[key], fallback)
+func loadWebcamSettings(configurationValues EnvConfigValues) (webcamSettings, error) {
+	url, err := loadRequiredConfigurationValue(configurationValues, "WEBCAM_URL")
+	if err != nil {
+		return webcamSettings{}, err
+	}
+	user, err := loadRequiredConfigurationValue(configurationValues, "WEBCAM_USER")
+	if err != nil {
+		return webcamSettings{}, err
+	}
+	pass, err := loadRequiredConfigurationValue(configurationValues, "WEBCAM_PASS")
+	if err != nil {
+		return webcamSettings{}, err
+	}
+
+	return webcamSettings{
+		url:  url,
+		user: user,
+		pass: pass,
+	}, nil
 }
 
-func requiredValue(values map[string]string, key string) (string, error) {
-	value := values[key]
+func loadCaptureTiming(configurationValues EnvConfigValues) (captureTiming, error) {
+	timeout, err := loadCaptureDuration(configurationValues, "TIMEOUT", 5)
+	if err != nil {
+		return captureTiming{}, err
+	}
+	captureWindow, err := loadCaptureDuration(configurationValues, "CAPTURE_WINDOW", 3)
+	if err != nil {
+		return captureTiming{}, err
+	}
+
+	return captureTiming{
+		timeout:       timeout,
+		captureWindow: captureWindow,
+	}, nil
+}
+
+func loadCaptureDuration(configurationValues EnvConfigValues, key string, fallbackSeconds int) (time.Duration, error) {
+	duration, err := parsePositiveDurationSeconds(configurationValues[key], fallbackSeconds)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s: %w", key, err)
+	}
+	return duration, nil
+}
+
+func loadRequiredConfigurationValue(configurationValues EnvConfigValues, key string) (string, error) {
+	value := configurationValues[key]
 	if value == "" {
 		return "", fmt.Errorf("%s is mandatory", key)
 	}
 	return value, nil
 }
 
-func Environment() map[string]string {
-	values := map[string]string{}
+func Environment() EnvConfigValues {
+	environmentValues := EnvConfigValues{}
 	for _, entry := range os.Environ() {
 		key, value, ok := strings.Cut(entry, "=")
 		if ok {
-			values[key] = value
+			environmentValues[key] = value
 		}
 	}
-	return values
+	return environmentValues
 }
 
-func secondsValue(raw string, fallback int) (time.Duration, error) {
+func parsePositiveDurationSeconds(raw string, fallbackSeconds int) (time.Duration, error) {
 	if raw == "" {
-		return time.Duration(fallback) * time.Second, nil
+		return time.Duration(fallbackSeconds) * time.Second, nil
 	}
 	seconds, err := strconv.Atoi(raw)
 	if err != nil {
