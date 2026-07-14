@@ -13,6 +13,12 @@ import (
 
 const dateLayout = "2006-01-02 15:04:05"
 
+type scriptOptions struct {
+	outputPath       string
+	timeLapseSeconds int
+	helpRequested    bool
+}
+
 var defaultLogger = log.New(os.Stdout, time.Now().Format(dateLayout)+" - ", 0)
 
 func main() {
@@ -23,9 +29,12 @@ func main() {
 }
 
 func run(args []string, logger *log.Logger) error {
-	scriptOptions, err := parseScriptOptions(args, os.Stdout)
+	options, err := parseScriptOptions(args, os.Stdout)
 	if err != nil {
 		return err
+	}
+	if options.helpRequested {
+		return nil
 	}
 
 	workDir, err := os.Getwd()
@@ -38,11 +47,11 @@ func run(args []string, logger *log.Logger) error {
 		return err
 	}
 
-	if scriptOptions.isSingleShot() {
-		return runSingleCapture(config, scriptOptions.outputPath, workDir, logger)
+	if options.isTimeLapseEnabled() {
+		return runLoop(config, time.Duration(options.timeLapseSeconds)*time.Second, workDir, logger)
 	}
 
-	return runLoop(config, scriptOptions.timeLapse, workDir, logger)
+	return runSingleCapture(config, options.outputPath, workDir, logger)
 }
 
 func runSingleCapture(config capture.CapturingConfiguration, outputPath string, workDir string, logger *log.Logger) error {
@@ -58,16 +67,20 @@ func runSingleCapture(config capture.CapturingConfiguration, outputPath string, 
 	return nil
 }
 
-func parseScriptOptions(args []string, output io.Writer) (ScriptOptions, error) {
+func parseScriptOptions(args []string, output io.Writer) (scriptOptions, error) {
+	flags := createScriptFlagSet(output)
+	options := registerScriptOptions(flags)
+
+	if err := flags.Parse(args); err != nil {
+		return handleScriptFlagError(err)
+	}
+
+	return validateScriptOptions(*options)
+}
+
+func createScriptFlagSet(output io.Writer) *flag.FlagSet {
 	flags := flag.NewFlagSet("akji-capture", flag.ContinueOnError)
 	flags.SetOutput(output)
-
-	var outputPath string
-	var timeLapse int
-	flags.StringVar(&outputPath, "out", "", "Output file path")
-	flags.StringVar(&outputPath, "o", "", "Output file path")
-	flags.IntVar(&timeLapse, "timeLapse", 0, "Run in loop, capturing every N seconds")
-	flags.IntVar(&timeLapse, "tl", 0, "Run in loop, capturing every N seconds")
 	flags.Usage = func() {
 		fmt.Fprintln(flags.Output(), "Usage: akji-capture [OPTIONS]")
 		fmt.Fprintln(flags.Output())
@@ -76,20 +89,30 @@ func parseScriptOptions(args []string, output io.Writer) (ScriptOptions, error) 
 		fmt.Fprintln(flags.Output(), "Options:")
 		flags.PrintDefaults()
 	}
+	return flags
+}
 
-	if err := flags.Parse(args); err != nil {
-		if err == flag.ErrHelp {
-			return ScriptOptions{}, nil
-		}
-		return ScriptOptions{}, err
+func registerScriptOptions(flags *flag.FlagSet) *scriptOptions {
+	options := &scriptOptions{}
+	flags.StringVar(&options.outputPath, "out", "", "Output file path")
+	flags.StringVar(&options.outputPath, "o", "", "Output file path")
+	flags.IntVar(&options.timeLapseSeconds, "timeLapse", 0, "Run in loop, capturing every N seconds")
+	flags.IntVar(&options.timeLapseSeconds, "tl", 0, "Run in loop, capturing every N seconds")
+	return options
+}
+
+func handleScriptFlagError(flagError error) (scriptOptions, error) {
+	if flagError == flag.ErrHelp {
+		return scriptOptions{helpRequested: true}, nil
 	}
-	if timeLapse > 0 && outputPath != "" {
-		return ScriptOptions{}, fmt.Errorf("--out is not compatible with --timeLapse")
+	return scriptOptions{}, flagError
+}
+
+func validateScriptOptions(options scriptOptions) (scriptOptions, error) {
+	if options.timeLapseSeconds > 0 && options.outputPath != "" {
+		return scriptOptions{}, fmt.Errorf("--out is not compatible with --timeLapse")
 	}
-	return ScriptOptions{
-		outputPath: outputPath,
-		timeLapse:  time.Duration(timeLapse) * time.Second,
-	}, nil
+	return options, nil
 }
 
 func runLoop(config capture.CapturingConfiguration, interval time.Duration, workDir string, logger *log.Logger) error {
@@ -114,11 +137,6 @@ func runLoop(config capture.CapturingConfiguration, interval time.Duration, work
 	}
 }
 
-type ScriptOptions struct {
-	outputPath string
-	timeLapse  time.Duration
-}
-
-func (o ScriptOptions) isSingleShot() bool {
-	return o.timeLapse <= 0
+func (options scriptOptions) isTimeLapseEnabled() bool {
+	return options.timeLapseSeconds > 0
 }
