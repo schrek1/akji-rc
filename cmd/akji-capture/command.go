@@ -9,7 +9,7 @@ import (
 )
 
 func run(args []string) error {
-	options, err := parseScriptOptions(args, os.Stdout)
+	options, err := parseOptions(args, os.Stdout)
 	if err != nil {
 		return err
 	}
