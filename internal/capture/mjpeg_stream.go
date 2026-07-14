@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -103,7 +104,8 @@ func readUntilDeadline(reader io.Reader) ([]byte, error) {
 	if err == nil {
 		return data, nil
 	}
-	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
 		return data, nil
 	}
 	return data, err
