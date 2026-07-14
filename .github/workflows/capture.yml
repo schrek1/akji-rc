@@ -25,12 +25,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build capture command
+      - name: Build Go commands
         shell: bash
         run: |
           set -euo pipefail
           go test ./...
           go build -o "$RUNNER_TEMP/akji-capture" ./cmd/akji-capture
+          go build -o "$RUNNER_TEMP/akji-validate" ./cmd/akji-validate
       
       - name: Capture frame -> /tmp/frame.jpg
         shell: bash
@@ -46,8 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x app/ci/validate_frame.sh
-          app/ci/validate_frame.sh /tmp/frame.jpg
+          "$RUNNER_TEMP/akji-validate" /tmp/frame.jpg
       
       - name: Publish frame (temporary) and get URL
         id: publish

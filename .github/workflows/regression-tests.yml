@@ -24,6 +24,9 @@ jobs:
       - name: Run Go tests
         run: go test ./...
 
+      - name: Build Go validation command
+        run: go build -o "$RUNNER_TEMP/akji-validate" ./cmd/akji-validate
+
       - name: Setup environment
         run: |
           sudo apt-get update
@@ -43,5 +46,4 @@ jobs:
         run: |
           set -euo pipefail
           go run ./cmd/akji-capture --out "$RUNNER_TEMP/go-integration-frame.jpg"
-          chmod +x app/ci/validate_frame.sh
-          app/ci/validate_frame.sh "$RUNNER_TEMP/go-integration-frame.jpg"
+          "$RUNNER_TEMP/akji-validate" "$RUNNER_TEMP/go-integration-frame.jpg"
