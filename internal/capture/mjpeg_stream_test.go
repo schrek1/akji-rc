@@ -30,6 +30,16 @@ func TestStripHTTPHeaders_headerlessStream_keepsData(t *testing.T) {
 	}
 }
 
+func TestStripHTTPHeaders_httpPrefixWithoutTerminator_keepsData(t *testing.T) {
+	data := []byte("HTTP/1.0 200 OK\r\nContent-Type: image/jpeg\r\n\xff\xd8\xffDATA\xff\xd9")
+
+	body := stripHTTPHeaders(data)
+
+	if !bytes.Equal(body, data) {
+		t.Fatalf("body = %q, want %q", body, data)
+	}
+}
+
 func TestDownloadMJPEGStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
 	webcamListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

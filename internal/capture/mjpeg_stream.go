@@ -131,5 +131,7 @@ func stripHTTPHeaders(data []byte) []byte {
 	if index := bytes.Index(data, headerEnd); index >= 0 {
 		return data[index+len(headerEnd):]
 	}
-	return nil
+	// No header terminator (e.g. a response truncated by the capture window): keep the data so the
+	// JPEG scan can still find a frame rather than discarding everything.
+	return data
 }
