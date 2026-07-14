@@ -50,7 +50,7 @@ func parseWebcamEndpoint(webcamURL string) (webcamEndpoint, error) {
 	return webcamEndpoint{
 		connectionHost: connectionHost(parsedURL),
 		requestHost:    parsedURL.Host,
-		requestPath:    requestPath(parsedURL),
+		requestPath:    parsedURL.RequestURI(),
 	}, nil
 }
 
@@ -59,10 +59,6 @@ func connectionHost(parsedURL *url.URL) string {
 		return parsedURL.Host
 	}
 	return parsedURL.Host + ":80"
-}
-
-func requestPath(parsedURL *url.URL) string {
-	return parsedURL.RequestURI()
 }
 
 func openWebcamConnection(endpoint webcamEndpoint, timeout time.Duration) (net.Conn, error) {
