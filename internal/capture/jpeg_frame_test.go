@@ -60,6 +60,18 @@ func TestExtractJPEGFrame_ciMockData_extractsFrame(t *testing.T) {
 	}
 }
 
+func TestMarkerOffsets_adjacentMarkers_countedNonOverlappingLikeShell(t *testing.T) {
+	// A naive one-byte advance would report an overlapping SOI at offset 2;
+	// the shell `grep -o` scan counts non-overlapping markers only.
+	source := []byte("\xff\xd8\xff\xd8\xff")
+
+	offsets := markerOffsets(source, jpegSOI)
+
+	if len(offsets) != 1 || offsets[0] != 0 {
+		t.Fatalf("markerOffsets() = %v, want [0]", offsets)
+	}
+}
+
 func TestExtractJPEGFrame_ignoresEndMarkerBeforeFrameStart(t *testing.T) {
 	source := []byte("\xff\xd9before\xff\xd8\xffFRAME\xff\xd9")
 

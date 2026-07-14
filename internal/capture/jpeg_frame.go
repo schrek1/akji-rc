@@ -79,6 +79,7 @@ func markerOffsets(source []byte, marker []byte) []int {
 		}
 		offset := searchFrom + index
 		offsets = append(offsets, offset)
-		searchFrom = offset + 1
+		// Advance past the whole marker so counting stays non-overlapping, matching the legacy `grep -o` scan.
+		searchFrom = offset + len(marker)
 	}
 }
