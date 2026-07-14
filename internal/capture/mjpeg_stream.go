@@ -62,9 +62,6 @@ func connectionHost(parsedURL *url.URL) string {
 }
 
 func requestPath(parsedURL *url.URL) string {
-	if parsedURL.RequestURI() == "" {
-		return "/"
-	}
 	return parsedURL.RequestURI()
 }
 
