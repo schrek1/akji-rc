@@ -6,6 +6,9 @@ out/
 .env
 .env.*
 
+# Local Codex attachments
+.codex-remote-attachments/
+
 # Keys and certificates
 **/*.key
 **/*.key.*
@@ -31,6 +34,11 @@ Thumbs.db
 # AWS User-specific
 .idea/**/aws.xml
 
+# Local IDE plugin state
+.idea/GitLink.xml
+.idea/awsToolkit.xml
+.idea/go.imports.xml
+
 # Generated files
 .idea/**/contentModel.xml
 
@@ -42,6 +50,7 @@ Thumbs.db
 .idea/**/dynamic.xml
 .idea/**/uiDesigner.xml
 .idea/**/dbnavigator.xml
+.idea/db-forest-config.xml
 
 # Gradle
 .idea/**/gradle.xml
