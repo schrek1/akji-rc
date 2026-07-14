@@ -70,7 +70,7 @@ func copyJPEGFrame(source []byte, startOffset int, endOffset int) []byte {
 }
 
 func markerOffsets(source []byte, marker []byte) []int {
-	offsets := []int{}
+	var offsets []int
 	searchFrom := 0
 	for {
 		index := bytes.Index(source[searchFrom:], marker)
