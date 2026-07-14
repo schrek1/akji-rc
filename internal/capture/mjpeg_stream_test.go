@@ -74,6 +74,35 @@ func TestDownloadMJPEGStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.
 	assertMJPEGRequest(t, <-receivedRequest, webcamListener.Addr().String())
 }
 
+func TestParseWebcamEndpoint_resolvesConnectionHostAndRequestPath(t *testing.T) {
+	testCases := []struct {
+		name               string
+		webcamURL          string
+		expectedConnection string
+		expectedPath       string
+	}{
+		{"host without port defaults to 80", "http://camera/stream", "camera:80", "/stream"},
+		{"explicit port is preserved", "http://camera:8080/stream", "camera:8080", "/stream"},
+		{"query string is kept in request path", "http://camera/cam?quality=high", "camera:80", "/cam?quality=high"},
+		{"empty path resolves to root", "http://camera", "camera:80", "/"},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			endpoint, err := parseWebcamEndpoint(testCase.webcamURL)
+			if err != nil {
+				t.Fatalf("parseWebcamEndpoint() error = %v", err)
+			}
+			if endpoint.connectionHost != testCase.expectedConnection {
+				t.Errorf("connectionHost = %q, want %q", endpoint.connectionHost, testCase.expectedConnection)
+			}
+			if endpoint.requestPath != testCase.expectedPath {
+				t.Errorf("requestPath = %q, want %q", endpoint.requestPath, testCase.expectedPath)
+			}
+		})
+	}
+}
+
 func TestDownloadMJPEGStream_httpsEndpoint_returnsError(t *testing.T) {
 	capturingConfiguration := Configuration{
 		WebcamURL:     "https://camera",

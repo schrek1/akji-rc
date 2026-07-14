@@ -50,6 +50,16 @@ func TestNewConfiguration_invalidTimingProperty_returnsError(t *testing.T) {
 	}
 }
 
+func TestNewConfiguration_nonNumericTimingProperty_returnsError(t *testing.T) {
+	properties := validEnvironmentProperties()
+	properties[timeoutProperty] = "abc"
+
+	_, err := NewConfiguration(properties)
+	if err == nil {
+		t.Fatal("NewConfiguration() error = nil")
+	}
+}
+
 func validEnvironmentProperties() config.EnvironmentProperties {
 	return config.EnvironmentProperties{
 		webcamURLProperty:  "http://camera",
