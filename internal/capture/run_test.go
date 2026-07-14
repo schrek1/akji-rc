@@ -37,7 +37,7 @@ func TestCaptureToFile_downloadsAndExtractsMockFrame(t *testing.T) {
 	defer webcamServer.Close()
 
 	outputPath := filepath.Join(t.TempDir(), "captures", "ci_test.jpg")
-	capturingConfiguration := CapturingConfiguration{
+	capturingConfiguration := Configuration{
 		WebcamURL:     webcamServer.URL,
 		WebcamUser:    user,
 		WebcamPass:    pass,
@@ -68,7 +68,7 @@ func TestCaptureToFile_invalidStreamRemovesOutput(t *testing.T) {
 	if err := os.WriteFile(outputPath, []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	capturingConfiguration := CapturingConfiguration{
+	capturingConfiguration := Configuration{
 		WebcamURL:     webcamServer.URL,
 		WebcamUser:    "user",
 		WebcamPass:    "pass",

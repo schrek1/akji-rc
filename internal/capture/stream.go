@@ -18,7 +18,7 @@ type webcamEndpoint struct {
 	requestPath    string
 }
 
-func DownloadStream(config CapturingConfiguration) ([]byte, error) {
+func DownloadStream(config Configuration) ([]byte, error) {
 	endpoint, err := parseWebcamEndpoint(config.WebcamURL)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func setCaptureDeadline(connection net.Conn, captureWindow time.Duration) error 
 	return connection.SetDeadline(time.Now().Add(captureWindow))
 }
 
-func createMJPEGRequest(endpoint webcamEndpoint, config CapturingConfiguration) string {
+func createMJPEGRequest(endpoint webcamEndpoint, config Configuration) string {
 	request := fmt.Sprintf("GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n", endpoint.requestPath, endpoint.requestHost)
 	if config.WebcamUser != "" {
 		request += basicAuthorizationHeader(config.WebcamUser, config.WebcamPass)

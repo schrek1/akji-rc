@@ -6,9 +6,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/schrek1/akji-rc/internal/capture"
+	"github.com/schrek1/akji-rc/internal/config"
 )
 
 const dateLayout = "2006-01-02 15:04:05"
@@ -19,16 +21,16 @@ type scriptOptions struct {
 	helpRequested    bool
 }
 
-var defaultLogger = log.New(os.Stdout, time.Now().Format(dateLayout)+" - ", 0)
+var logger = log.New(os.Stdout, time.Now().Format(dateLayout)+" - ", 0)
 
 func main() {
-	if err := run(os.Args[1:], defaultLogger); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "%s - ERROR: %v\n", time.Now().Format(dateLayout), err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string, logger *log.Logger) error {
+func run(args []string) error {
 	options, err := parseScriptOptions(args, os.Stdout)
 	if err != nil {
 		return err
@@ -42,19 +44,30 @@ func run(args []string, logger *log.Logger) error {
 		return err
 	}
 
-	config, err := capture.LoadConfig(capture.Environment(), workDir)
+	config, err := loadCaptureConfiguration(workDir)
 	if err != nil {
 		return err
 	}
 
 	if options.isTimeLapseEnabled() {
-		return runLoop(config, time.Duration(options.timeLapseSeconds)*time.Second, workDir, logger)
+		return runLoop(config, time.Duration(options.timeLapseSeconds)*time.Second, workDir)
 	}
 
-	return runSingleCapture(config, options.outputPath, workDir, logger)
+	return runSingleCapture(config, options.outputPath, workDir)
 }
 
-func runSingleCapture(config capture.CapturingConfiguration, outputPath string, workDir string, logger *log.Logger) error {
+func loadCaptureConfiguration(workDir string) (capture.Configuration, error) {
+	properties, err := config.LoadEnvironmentProperties(
+		filepath.Join(workDir, "app", ".env"),
+		config.ReadProcessEnvironmentProperties(),
+	)
+	if err != nil {
+		return capture.Configuration{}, err
+	}
+	return capture.NewConfiguration(properties)
+}
+
+func runSingleCapture(config capture.Configuration, outputPath string, workDir string) error {
 	if outputPath == "" {
 		outputPath = capture.DefaultOutputPath(workDir, time.Now())
 	}
@@ -115,7 +128,7 @@ func validateScriptOptions(options scriptOptions) (scriptOptions, error) {
 	return options, nil
 }
 
-func runLoop(config capture.CapturingConfiguration, interval time.Duration, workDir string, logger *log.Logger) error {
+func runLoop(config capture.Configuration, interval time.Duration, workDir string) error {
 	logger.Printf("Time-lapse enabled (Interval: %.0fs). Press Ctrl+C to stop.", interval.Seconds())
 	nextTick := time.Now()
 	for {

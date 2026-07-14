@@ -42,7 +42,7 @@ func TestDownloadStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
 	serverErrors := make(chan error, 1)
 	go serveMJPEGResponse(webcamListener, expectedJPEGFrame, receivedRequest, serverErrors)
 
-	capturingConfiguration := CapturingConfiguration{
+	capturingConfiguration := Configuration{
 		WebcamURL:     "http://" + webcamListener.Addr().String() + "/camera?quality=high",
 		WebcamUser:    "camera-user",
 		WebcamPass:    "camera-pass",
@@ -65,7 +65,7 @@ func TestDownloadStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
 }
 
 func TestDownloadStream_httpsEndpoint_returnsError(t *testing.T) {
-	capturingConfiguration := CapturingConfiguration{
+	capturingConfiguration := Configuration{
 		WebcamURL:     "https://camera",
 		Timeout:       time.Second,
 		CaptureWindow: time.Second,
