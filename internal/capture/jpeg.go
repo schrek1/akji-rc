@@ -11,34 +11,59 @@ var (
 )
 
 func ExtractJPEG(source []byte) ([]byte, error) {
-	sois := markerOffsets(source, jpegSOI)
-	eois := markerOffsets(source, jpegEOI)
-	if len(sois) == 0 || len(eois) == 0 {
-		return nil, fmt.Errorf("could not find enough JPEG markers (SOI: %d, EOI: %d)", len(sois), len(eois))
+	startOffsets := markerOffsets(source, jpegSOI)
+	endOffsets := markerOffsets(source, jpegEOI)
+	if !hasCompleteJPEGMarkers(startOffsets, endOffsets) {
+		return nil, fmt.Errorf("could not find enough JPEG markers (SOI: %d, EOI: %d)", len(startOffsets), len(endOffsets))
 	}
 
-	mid := len(sois) / 2
-	if mid < 1 {
-		mid = 1
-	}
+	return extractPreferredJPEGFrame(source, startOffsets, endOffsets)
+}
 
-	targetIndices := []int{mid - 1, 0}
-	for _, index := range targetIndices {
-		if index < 0 || index >= len(sois) {
-			continue
-		}
-		start := sois[index]
-		for _, end := range eois {
-			if end > start {
-				frame := append([]byte(nil), source[start:end+len(jpegEOI)]...)
-				if bytes.HasSuffix(frame, jpegEOI) {
-					return frame, nil
-				}
-			}
+func hasCompleteJPEGMarkers(startOffsets []int, endOffsets []int) bool {
+	return len(startOffsets) > 0 && len(endOffsets) > 0
+}
+
+func extractPreferredJPEGFrame(source []byte, startOffsets []int, endOffsets []int) ([]byte, error) {
+	for _, startOffset := range preferredJPEGStartOffsets(startOffsets) {
+		endOffset, found := firstJPEGEndOffsetAfter(startOffset, endOffsets)
+		if found {
+			return copyJPEGFrame(source, startOffset, endOffset), nil
 		}
 	}
 
 	return nil, fmt.Errorf("could not extract a valid JPEG frame from stream")
+}
+
+func preferredJPEGStartOffsets(startOffsets []int) []int {
+	preferredIndex := len(startOffsets)/2 - 1
+	if preferredIndex < 0 {
+		preferredIndex = 0
+	}
+
+	return uniqueStartOffsets(startOffsets, preferredIndex)
+}
+
+func uniqueStartOffsets(startOffsets []int, preferredIndex int) []int {
+	preferredStartOffset := startOffsets[preferredIndex]
+	firstStartOffset := startOffsets[0]
+	if preferredStartOffset == firstStartOffset {
+		return []int{preferredStartOffset}
+	}
+	return []int{preferredStartOffset, firstStartOffset}
+}
+
+func firstJPEGEndOffsetAfter(startOffset int, endOffsets []int) (int, bool) {
+	for _, endOffset := range endOffsets {
+		if endOffset > startOffset {
+			return endOffset, true
+		}
+	}
+	return 0, false
+}
+
+func copyJPEGFrame(source []byte, startOffset int, endOffset int) []byte {
+	return append([]byte(nil), source[startOffset:endOffset+len(jpegEOI)]...)
 }
 
 func markerOffsets(source []byte, marker []byte) []int {

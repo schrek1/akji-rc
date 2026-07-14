@@ -59,3 +59,17 @@ func TestExtractJPEG_ciMockData_extractsFrame(t *testing.T) {
 		t.Fatalf("frame = %q, want %q", frame, source)
 	}
 }
+
+func TestExtractJPEG_ignoresEndMarkerBeforeFrameStart(t *testing.T) {
+	source := []byte("\xff\xd9before\xff\xd8\xffFRAME\xff\xd9")
+
+	frame, err := ExtractJPEG(source)
+	if err != nil {
+		t.Fatalf("ExtractJPEG() error = %v", err)
+	}
+
+	expectedFrame := []byte("\xff\xd8\xffFRAME\xff\xd9")
+	if !bytes.Equal(frame, expectedFrame) {
+		t.Fatalf("frame = %q, want %q", frame, expectedFrame)
+	}
+}
