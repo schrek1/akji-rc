@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestParseScriptOptions_shortAliases_resolveOutputAndTimeLapse(t *testing.T) {
+func TestParseOptions_shortAliases_resolveOutputAndTimeLapse(t *testing.T) {
 	outputOptions, err := parseOptions([]string{"-o", "frame.jpg"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("parseOptions() error = %v", err)
@@ -23,14 +23,14 @@ func TestParseScriptOptions_shortAliases_resolveOutputAndTimeLapse(t *testing.T)
 	}
 }
 
-func TestParseScriptOptions_outputAndTimeLapse_returnsError(t *testing.T) {
+func TestParseOptions_outputAndTimeLapse_returnsError(t *testing.T) {
 	_, err := parseOptions([]string{"--out", "frame.jpg", "--timeLapse", "5"}, &bytes.Buffer{})
 	if err == nil {
 		t.Fatal("parseOptions() error = nil")
 	}
 }
 
-func TestParseScriptOptions_help_marksOptionsAsHelpRequested(t *testing.T) {
+func TestParseOptions_help_marksOptionsAsHelpRequested(t *testing.T) {
 	output := &bytes.Buffer{}
 
 	options, err := parseOptions([]string{"--help"}, output)

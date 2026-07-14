@@ -6,26 +6,26 @@ import (
 	"path/filepath"
 )
 
-type CaptureResult struct {
+type Result struct {
 	OutputPath      string
 	DownloadedBytes int
 }
 
-func CaptureToFile(configuration Configuration, outputPath string) (CaptureResult, error) {
+func ToFile(configuration Configuration, outputPath string) (Result, error) {
 	mjpegStream, err := fetchMJPEGStream(configuration)
 	if err != nil {
-		return CaptureResult{}, err
+		return Result{}, err
 	}
 
 	jpegFrame, err := ExtractJPEGFrame(mjpegStream)
 	if err != nil {
-		return CaptureResult{}, removeInvalidCaptureOutput(outputPath, err)
+		return Result{}, removeInvalidCaptureOutput(outputPath, err)
 	}
 	if err := saveJPEGFrame(outputPath, jpegFrame); err != nil {
-		return CaptureResult{}, err
+		return Result{}, err
 	}
 
-	return CaptureResult{
+	return Result{
 		OutputPath:      outputPath,
 		DownloadedBytes: len(mjpegStream),
 	}, nil

@@ -36,7 +36,7 @@ func TestCaptureToFile_downloadsAndSavesJPEGFrame(t *testing.T) {
 		CaptureWindow: time.Second,
 	}
 
-	captureResult, err := CaptureToFile(configuration, outputPath)
+	captureResult, err := ToFile(configuration, outputPath)
 	if err != nil {
 		t.Fatalf("CaptureToFile() error = %v", err)
 	}
@@ -75,7 +75,7 @@ func TestCaptureToFile_invalidStreamRemovesExistingOutput(t *testing.T) {
 		CaptureWindow: time.Second,
 	}
 
-	if _, err := CaptureToFile(configuration, outputPath); err == nil {
+	if _, err := ToFile(configuration, outputPath); err == nil {
 		t.Fatal("CaptureToFile() error = nil")
 	}
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {

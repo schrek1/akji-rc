@@ -41,7 +41,7 @@ func runSingleCapture(configuration capture.Configuration, outputPath string, wo
 		outputPath = defaultOutputPath(workDir, time.Now())
 	}
 
-	captureResult, err := capture.CaptureToFile(configuration, outputPath)
+	captureResult, err := capture.ToFile(configuration, outputPath)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func runLoop(configuration capture.Configuration, interval time.Duration, workDi
 	nextTick := time.Now()
 	for {
 		outputPath := defaultOutputPath(workDir, time.Now())
-		captureResult, err := capture.CaptureToFile(configuration, outputPath)
+		captureResult, err := capture.ToFile(configuration, outputPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s - ERROR: Capture cycle failed: %v\n", time.Now().Format(dateLayout), err)
 		} else {
@@ -82,7 +82,7 @@ func runLoop(configuration capture.Configuration, interval time.Duration, workDi
 	}
 }
 
-func printCaptureResult(captureResult capture.CaptureResult, successMessage string) {
+func printCaptureResult(captureResult capture.Result, successMessage string) {
 	fmt.Printf("Downloaded %d bytes from MJPEG stream.\n", captureResult.DownloadedBytes)
 	fmt.Printf("Saved: %s\n", captureResult.OutputPath)
 	fmt.Println(successMessage)

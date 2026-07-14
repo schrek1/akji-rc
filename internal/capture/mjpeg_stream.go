@@ -104,8 +104,7 @@ func readUntilDeadline(reader io.Reader) ([]byte, error) {
 	if err == nil {
 		return data, nil
 	}
-	var netErr net.Error
-	if errors.As(err, &netErr) && netErr.Timeout() {
+	if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {
 		return data, nil
 	}
 	return data, err
