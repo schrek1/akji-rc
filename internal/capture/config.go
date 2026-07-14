@@ -1,7 +1,6 @@
 package capture
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-type Config struct {
+type CapturingConfiguration struct {
 	WebcamURL     string
 	WebcamUser    string
 	WebcamPass    string
@@ -18,7 +17,16 @@ type Config struct {
 	CaptureWindow time.Duration
 }
 
-func LoadConfig(env map[string]string, workDir string) (Config, error) {
+func LoadConfig(env map[string]string, workDir string) (CapturingConfiguration, error) {
+	values, err := loadConfigurationValues(env, workDir)
+	if err != nil {
+		return CapturingConfiguration{}, err
+	}
+
+	return configurationFromValues(values)
+}
+
+func loadConfigurationValues(env map[string]string, workDir string) (map[string]string, error) {
 	values := map[string]string{}
 	for _, envFile := range []string{
 		filepath.Join(workDir, "app", ".env"),
@@ -26,44 +34,70 @@ func LoadConfig(env map[string]string, workDir string) (Config, error) {
 	} {
 		fileValues, err := readEnvFile(envFile)
 		if err != nil {
-			return Config{}, err
+			return nil, err
 		}
-		for key, value := range fileValues {
-			values[key] = value
-		}
+		mergeValues(values, fileValues)
 	}
-	for key, value := range env {
+	mergeNonEmptyValues(values, env)
+	return values, nil
+}
+
+func mergeValues(target map[string]string, source map[string]string) {
+	for key, value := range source {
+		target[key] = value
+	}
+}
+
+func mergeNonEmptyValues(target map[string]string, source map[string]string) {
+	for key, value := range source {
 		if value != "" {
-			values[key] = value
+			target[key] = value
 		}
 	}
+}
 
-	timeout, err := secondsValue(values["TIMEOUT"], 5)
+func configurationFromValues(values map[string]string) (CapturingConfiguration, error) {
+	timeout, err := durationValue(values, "TIMEOUT", 5)
 	if err != nil {
-		return Config{}, fmt.Errorf("invalid TIMEOUT: %w", err)
+		return CapturingConfiguration{}, fmt.Errorf("invalid TIMEOUT: %w", err)
 	}
-	captureWindow, err := secondsValue(values["CAPTURE_WINDOW"], 3)
+	captureWindow, err := durationValue(values, "CAPTURE_WINDOW", 3)
 	if err != nil {
-		return Config{}, fmt.Errorf("invalid CAPTURE_WINDOW: %w", err)
+		return CapturingConfiguration{}, fmt.Errorf("invalid CAPTURE_WINDOW: %w", err)
 	}
 
-	config := Config{
-		WebcamURL:     values["WEBCAM_URL"],
-		WebcamUser:    values["WEBCAM_USER"],
-		WebcamPass:    values["WEBCAM_PASS"],
+	webcamURL, err := requiredValue(values, "WEBCAM_URL")
+	if err != nil {
+		return CapturingConfiguration{}, err
+	}
+	webcamUser, err := requiredValue(values, "WEBCAM_USER")
+	if err != nil {
+		return CapturingConfiguration{}, err
+	}
+	webcamPass, err := requiredValue(values, "WEBCAM_PASS")
+	if err != nil {
+		return CapturingConfiguration{}, err
+	}
+
+	return CapturingConfiguration{
+		WebcamURL:     webcamURL,
+		WebcamUser:    webcamUser,
+		WebcamPass:    webcamPass,
 		Timeout:       timeout,
 		CaptureWindow: captureWindow,
+	}, nil
+}
+
+func durationValue(values map[string]string, key string, fallback int) (time.Duration, error) {
+	return secondsValue(values[key], fallback)
+}
+
+func requiredValue(values map[string]string, key string) (string, error) {
+	value := values[key]
+	if value == "" {
+		return "", fmt.Errorf("%s is mandatory", key)
 	}
-	if config.WebcamURL == "" {
-		return Config{}, fmt.Errorf("WEBCAM_URL is mandatory")
-	}
-	if config.WebcamUser == "" {
-		return Config{}, fmt.Errorf("WEBCAM_USER is mandatory")
-	}
-	if config.WebcamPass == "" {
-		return Config{}, fmt.Errorf("WEBCAM_PASS is mandatory")
-	}
-	return config, nil
+	return value, nil
 }
 
 func Environment() map[string]string {
@@ -75,42 +109,6 @@ func Environment() map[string]string {
 		}
 	}
 	return values
-}
-
-func readEnvFile(path string) (map[string]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return map[string]string{}, nil
-		}
-		return nil, err
-	}
-	defer file.Close()
-
-	values := map[string]string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		values[strings.TrimSpace(key)] = trimEnvValue(value)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return values, nil
-}
-
-func trimEnvValue(value string) string {
-	value = strings.TrimSpace(value)
-	value = strings.Trim(value, `"`)
-	value = strings.Trim(value, `'`)
-	return value
 }
 
 func secondsValue(raw string, fallback int) (time.Duration, error) {

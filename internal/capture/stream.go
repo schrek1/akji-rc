@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func DownloadStream(config Config) ([]byte, error) {
+func DownloadStream(config CapturingConfiguration) ([]byte, error) {
 	parsedURL, err := url.Parse(config.WebcamURL)
 	if err != nil {
 		return nil, err

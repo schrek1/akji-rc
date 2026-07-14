@@ -11,7 +11,7 @@ type Logger interface {
 	Printf(format string, args ...any)
 }
 
-func CaptureToFile(config Config, outputPath string, logger Logger) error {
+func CaptureToFile(config CapturingConfiguration, outputPath string, logger Logger) error {
 	stream, err := DownloadStream(config)
 	if err != nil {
 		return fmt.Errorf("failed to access MJPEG stream at %s: %w", config.WebcamURL, err)

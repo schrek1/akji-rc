@@ -20,27 +20,27 @@ func TestLoadConfig_envOverridesDotEnvFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config, err := LoadConfig(map[string]string{
+	loadedConfiguration, err := LoadConfig(map[string]string{
 		"WEBCAM_URL": "http://env",
 	}, workDir)
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
 
-	if config.WebcamURL != "http://env" {
-		t.Fatalf("WebcamURL = %q", config.WebcamURL)
+	if loadedConfiguration.WebcamURL != "http://env" {
+		t.Fatalf("WebcamURL = %q", loadedConfiguration.WebcamURL)
 	}
-	if config.WebcamUser != "cwd-user" {
-		t.Fatalf("WebcamUser = %q", config.WebcamUser)
+	if loadedConfiguration.WebcamUser != "cwd-user" {
+		t.Fatalf("WebcamUser = %q", loadedConfiguration.WebcamUser)
 	}
-	if config.WebcamPass != "cwd-pass" {
-		t.Fatalf("WebcamPass = %q", config.WebcamPass)
+	if loadedConfiguration.WebcamPass != "cwd-pass" {
+		t.Fatalf("WebcamPass = %q", loadedConfiguration.WebcamPass)
 	}
-	if config.Timeout != 7*time.Second {
-		t.Fatalf("Timeout = %v", config.Timeout)
+	if loadedConfiguration.Timeout != 7*time.Second {
+		t.Fatalf("Timeout = %v", loadedConfiguration.Timeout)
 	}
-	if config.CaptureWindow != 4*time.Second {
-		t.Fatalf("CaptureWindow = %v", config.CaptureWindow)
+	if loadedConfiguration.CaptureWindow != 4*time.Second {
+		t.Fatalf("CaptureWindow = %v", loadedConfiguration.CaptureWindow)
 	}
 }
 
