@@ -6,6 +6,9 @@ out/
 .env
 .env.*
 
+# Local Go binaries
+*.exe
+
 # Local Codex attachments
 .codex-remote-attachments/
 

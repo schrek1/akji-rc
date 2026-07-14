@@ -1,4 +1,4 @@
-package capture
+package main
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func DefaultOutputPath(workDir string, captureTime time.Time) string {
+func defaultOutputPath(workDir string, captureTime time.Time) string {
 	return filepath.Join(defaultCapturesDirectory(workDir), captureFileName(captureTime))
 }
 
