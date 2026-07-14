@@ -32,7 +32,7 @@ func CaptureToFile(configuration Configuration, outputPath string) (CaptureResul
 }
 
 func downloadMJPEGStream(configuration Configuration) ([]byte, error) {
-	mjpegStream, err := DownloadStream(configuration)
+	mjpegStream, err := DownloadMJPEGStream(configuration)
 	if err != nil {
 		return nil, fmt.Errorf("failed to access MJPEG stream at %s: %w", configuration.WebcamURL, err)
 	}

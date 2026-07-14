@@ -18,7 +18,7 @@ type webcamEndpoint struct {
 	requestPath    string
 }
 
-func DownloadStream(config Configuration) ([]byte, error) {
+func DownloadMJPEGStream(config Configuration) ([]byte, error) {
 	endpoint, err := parseWebcamEndpoint(config.WebcamURL)
 	if err != nil {
 		return nil, err

@@ -30,7 +30,7 @@ func TestStripHTTPHeaders_headerlessStream_keepsData(t *testing.T) {
 	}
 }
 
-func TestDownloadStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
+func TestDownloadMJPEGStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
 	webcamListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -50,9 +50,9 @@ func TestDownloadStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
 		CaptureWindow: time.Second,
 	}
 
-	jpegFrame, err := DownloadStream(capturingConfiguration)
+	jpegFrame, err := DownloadMJPEGStream(capturingConfiguration)
 	if err != nil {
-		t.Fatalf("DownloadStream() error = %v", err)
+		t.Fatalf("DownloadMJPEGStream() error = %v", err)
 	}
 	if err := <-serverErrors; err != nil {
 		t.Fatal(err)
@@ -64,16 +64,16 @@ func TestDownloadStream_httpEndpoint_sendsRequestAndReturnsBody(t *testing.T) {
 	assertMJPEGRequest(t, <-receivedRequest, webcamListener.Addr().String())
 }
 
-func TestDownloadStream_httpsEndpoint_returnsError(t *testing.T) {
+func TestDownloadMJPEGStream_httpsEndpoint_returnsError(t *testing.T) {
 	capturingConfiguration := Configuration{
 		WebcamURL:     "https://camera",
 		Timeout:       time.Second,
 		CaptureWindow: time.Second,
 	}
 
-	_, err := DownloadStream(capturingConfiguration)
+	_, err := DownloadMJPEGStream(capturingConfiguration)
 	if err == nil {
-		t.Fatal("DownloadStream() error = nil")
+		t.Fatal("DownloadMJPEGStream() error = nil")
 	}
 }
 
