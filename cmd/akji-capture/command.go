@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/schrek1/akji-rc/internal/capture"
@@ -49,6 +51,9 @@ func runSingleCapture(configuration capture.Configuration, outputPath string, wo
 }
 
 func runLoop(configuration capture.Configuration, interval time.Duration, workDir string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	fmt.Printf("Time-lapse enabled (Interval: %.0fs). Press Ctrl+C to stop.\n", interval.Seconds())
 	nextTick := time.Now()
 	for {
@@ -67,7 +72,13 @@ func runLoop(configuration capture.Configuration, interval time.Duration, workDi
 			sleepDuration = 0
 		}
 		fmt.Printf("Waiting %.0fs until next capture...\n", sleepDuration.Seconds())
-		time.Sleep(sleepDuration)
+
+		select {
+		case <-ctx.Done():
+			fmt.Println("Shutting down.")
+			return nil
+		case <-time.After(sleepDuration):
+		}
 	}
 }
 
