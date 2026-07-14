@@ -18,6 +18,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build capture command
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./...
+          go build -o "$RUNNER_TEMP/akji-capture" ./cmd/akji-capture
       
       - name: Capture frame -> /tmp/frame.jpg
         shell: bash
@@ -27,8 +40,7 @@ jobs:
           WEBCAM_PASS: ${{ secrets.WEBCAM_PASS }}
         run: |
           set -euo pipefail
-          chmod +x app/capture.sh
-          bash app/capture.sh --out /tmp/frame.jpg
+          "$RUNNER_TEMP/akji-capture" --out /tmp/frame.jpg
       
       - name: Validate frame
         shell: bash

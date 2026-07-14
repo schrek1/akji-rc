@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="akji-capture" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="akji-rc" />
+    <working_directory value="$PROJECT_DIR$" />
+    <EXTENSION ID="software.aws.toolkits.jetbrains.core.execution.GoAwsConnectionRunConfigurationExtension">
+      <option name="credential" />
+      <option name="region" />
+      <option name="useCurrentConnection" value="false" />
+    </EXTENSION>
+    <kind value="PACKAGE" />
+    <package value="github.com/schrek1/akji-rc/cmd/akji-capture" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/akji-capture/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
