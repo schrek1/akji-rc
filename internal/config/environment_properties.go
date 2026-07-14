@@ -8,18 +8,14 @@ import (
 
 type EnvironmentProperties map[string]string
 
-func LoadEnvironmentProperties(filePaths []string, processEnvironment EnvironmentProperties) (EnvironmentProperties, error) {
-	loadedProperties := EnvironmentProperties{}
-	for _, filePath := range filePaths {
-		fileProperties, err := readEnvironmentPropertiesFile(filePath)
-		if err != nil {
-			return nil, err
-		}
-		mergeEnvironmentProperties(loadedProperties, fileProperties)
+func LoadEnvironmentProperties(filePath string, processEnvironment EnvironmentProperties) (EnvironmentProperties, error) {
+	fileProperties, err := readEnvironmentPropertiesFile(filePath)
+	if err != nil {
+		return nil, err
 	}
 
-	mergeNonEmptyEnvironmentProperties(loadedProperties, processEnvironment)
-	return loadedProperties, nil
+	mergeNonEmptyEnvironmentProperties(fileProperties, processEnvironment)
+	return fileProperties, nil
 }
 
 func ReadProcessEnvironmentProperties() EnvironmentProperties {
@@ -76,12 +72,6 @@ func trimEnvironmentPropertyValue(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.Trim(value, `"`)
 	return strings.Trim(value, `'`)
-}
-
-func mergeEnvironmentProperties(target EnvironmentProperties, source EnvironmentProperties) {
-	for key, value := range source {
-		target[key] = value
-	}
 }
 
 func mergeNonEmptyEnvironmentProperties(target EnvironmentProperties, source EnvironmentProperties) {
