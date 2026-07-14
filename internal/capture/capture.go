@@ -12,7 +12,7 @@ type CaptureResult struct {
 }
 
 func CaptureToFile(configuration Configuration, outputPath string) (CaptureResult, error) {
-	mjpegStream, err := downloadMJPEGStream(configuration)
+	mjpegStream, err := fetchMJPEGStream(configuration)
 	if err != nil {
 		return CaptureResult{}, err
 	}
@@ -31,7 +31,7 @@ func CaptureToFile(configuration Configuration, outputPath string) (CaptureResul
 	}, nil
 }
 
-func downloadMJPEGStream(configuration Configuration) ([]byte, error) {
+func fetchMJPEGStream(configuration Configuration) ([]byte, error) {
 	mjpegStream, err := DownloadMJPEGStream(configuration)
 	if err != nil {
 		return nil, fmt.Errorf("failed to access MJPEG stream at %s: %w", configuration.WebcamURL, err)
