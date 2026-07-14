@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -47,7 +48,7 @@ func registerScriptOptions(flags *flag.FlagSet) *scriptOptions {
 }
 
 func handleScriptFlagError(flagError error) (scriptOptions, error) {
-	if flagError == flag.ErrHelp {
+	if errors.Is(flagError, flag.ErrHelp) {
 		return scriptOptions{helpRequested: true}, nil
 	}
 	return scriptOptions{}, flagError
