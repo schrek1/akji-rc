@@ -36,6 +36,8 @@ func extractPreferredJPEGFrame(source []byte, startOffsets []int, endOffsets []i
 }
 
 func preferredJPEGStartOffsets(startOffsets []int) []int {
+	// Preserve the legacy shell selection order: favor an interior frame, then retry from the first frame.
+	// This reduces the chance of extracting a partial frame from either edge of a captured stream chunk.
 	preferredIndex := len(startOffsets)/2 - 1
 	if preferredIndex < 0 {
 		preferredIndex = 0
@@ -54,6 +56,7 @@ func uniqueStartOffsets(startOffsets []int, preferredIndex int) []int {
 }
 
 func firstJPEGEndOffsetAfter(startOffset int, endOffsets []int) (int, bool) {
+	// EOI markers before this SOI belong to an earlier partial frame and cannot close the selected frame.
 	for _, endOffset := range endOffsets {
 		if endOffset > startOffset {
 			return endOffset, true
