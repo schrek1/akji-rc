@@ -32,6 +32,7 @@ jobs:
           go test ./...
           go build -o "$RUNNER_TEMP/akji-capture" ./cmd/akji-capture
           go build -o "$RUNNER_TEMP/akji-validate" ./cmd/akji-validate
+          go build -o "$RUNNER_TEMP/akji-publish" ./cmd/akji-publish
       
       - name: Capture frame -> /tmp/frame.jpg
         shell: bash
@@ -54,8 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x app/ci/publish_frame.sh
-          url="$(EXPIRY=1h app/ci/publish_frame.sh /tmp/frame.jpg)"
+          url="$("$RUNNER_TEMP/akji-publish" /tmp/frame.jpg)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
       
       - name: Show image in Job Summary (inline)
