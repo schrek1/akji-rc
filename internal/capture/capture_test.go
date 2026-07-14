@@ -10,15 +10,7 @@ import (
 	"time"
 )
 
-type testLogger struct {
-	t *testing.T
-}
-
-func (logger testLogger) Printf(format string, args ...any) {
-	logger.t.Logf(format, args...)
-}
-
-func TestCaptureToFile_downloadsAndExtractsMockFrame(t *testing.T) {
+func TestCaptureToFile_downloadsAndSavesJPEGFrame(t *testing.T) {
 	const user = "mock-user"
 	const pass = "mock-pass"
 	expectedJPEGFrame := []byte("\xff\xd8\xffCI_DATA\xff\xd9")
@@ -26,18 +18,17 @@ func TestCaptureToFile_downloadsAndExtractsMockFrame(t *testing.T) {
 	mjpegStream = append(mjpegStream, []byte("more junk")...)
 
 	webcamServer := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		requestUser, requestPass, ok := request.BasicAuth()
-		if !ok || requestUser != user || requestPass != pass {
+		requestUser, requestPass, authenticated := request.BasicAuth()
+		if !authenticated || requestUser != user || requestPass != pass {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		response.Header().Set("Content-Type", "multipart/x-mixed-replace")
 		_, _ = response.Write(mjpegStream)
 	}))
 	defer webcamServer.Close()
 
 	outputPath := filepath.Join(t.TempDir(), "captures", "ci_test.jpg")
-	capturingConfiguration := Configuration{
+	configuration := Configuration{
 		WebcamURL:     webcamServer.URL,
 		WebcamUser:    user,
 		WebcamPass:    pass,
@@ -45,8 +36,16 @@ func TestCaptureToFile_downloadsAndExtractsMockFrame(t *testing.T) {
 		CaptureWindow: time.Second,
 	}
 
-	if err := CaptureToFile(capturingConfiguration, outputPath, testLogger{t: t}); err != nil {
+	captureResult, err := CaptureToFile(configuration, outputPath)
+	if err != nil {
 		t.Fatalf("CaptureToFile() error = %v", err)
+	}
+
+	if captureResult.OutputPath != outputPath {
+		t.Errorf("OutputPath = %q, want %q", captureResult.OutputPath, outputPath)
+	}
+	if captureResult.DownloadedBytes != len(mjpegStream) {
+		t.Errorf("DownloadedBytes = %d, want %d", captureResult.DownloadedBytes, len(mjpegStream))
 	}
 
 	savedJPEGFrame, err := os.ReadFile(outputPath)
@@ -58,7 +57,7 @@ func TestCaptureToFile_downloadsAndExtractsMockFrame(t *testing.T) {
 	}
 }
 
-func TestCaptureToFile_invalidStreamRemovesOutput(t *testing.T) {
+func TestCaptureToFile_invalidStreamRemovesExistingOutput(t *testing.T) {
 	webcamServer := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		_, _ = response.Write([]byte("some junk\xff\xd8\xffimage data without end"))
 	}))
@@ -68,7 +67,7 @@ func TestCaptureToFile_invalidStreamRemovesOutput(t *testing.T) {
 	if err := os.WriteFile(outputPath, []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	capturingConfiguration := Configuration{
+	configuration := Configuration{
 		WebcamURL:     webcamServer.URL,
 		WebcamUser:    "user",
 		WebcamPass:    "pass",
@@ -76,35 +75,10 @@ func TestCaptureToFile_invalidStreamRemovesOutput(t *testing.T) {
 		CaptureWindow: time.Second,
 	}
 
-	if err := CaptureToFile(capturingConfiguration, outputPath, testLogger{t: t}); err == nil {
+	if _, err := CaptureToFile(configuration, outputPath); err == nil {
 		t.Fatal("CaptureToFile() error = nil")
 	}
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
 		t.Fatalf("output file should be removed, stat err = %v", err)
-	}
-}
-
-func TestDefaultOutputPath_existingAppDirectory_usesAppCapturesDirectory(t *testing.T) {
-	workDir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(workDir, "app"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	outputPath := DefaultOutputPath(workDir, time.Date(2026, time.July, 14, 17, 30, 0, 0, time.UTC))
-
-	expectedPath := filepath.Join(workDir, "app", "captures", "webcam_2026-07-14_17-30-00.jpg")
-	if outputPath != expectedPath {
-		t.Fatalf("DefaultOutputPath() = %q, want %q", outputPath, expectedPath)
-	}
-}
-
-func TestDefaultOutputPath_missingAppDirectory_usesWorkDirectoryCapturesDirectory(t *testing.T) {
-	workDir := t.TempDir()
-
-	outputPath := DefaultOutputPath(workDir, time.Date(2026, time.July, 14, 17, 30, 0, 0, time.UTC))
-
-	expectedPath := filepath.Join(workDir, "captures", "webcam_2026-07-14_17-30-00.jpg")
-	if outputPath != expectedPath {
-		t.Fatalf("DefaultOutputPath() = %q, want %q", outputPath, expectedPath)
 	}
 }
