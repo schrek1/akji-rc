@@ -8,13 +8,14 @@ import (
 
 type EnvironmentProperties map[string]string
 
+// LoadEnvironmentProperties loads file properties and applies process properties as overrides.
 func LoadEnvironmentProperties(filePath string, processEnvironment EnvironmentProperties) (EnvironmentProperties, error) {
 	fileProperties, err := readEnvironmentPropertiesFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	mergeNonEmptyEnvironmentProperties(fileProperties, processEnvironment)
+	applyOverrides(fileProperties, processEnvironment)
 	return fileProperties, nil
 }
 
@@ -74,10 +75,8 @@ func trimEnvironmentPropertyValue(value string) string {
 	return strings.Trim(value, `'`)
 }
 
-func mergeNonEmptyEnvironmentProperties(target EnvironmentProperties, source EnvironmentProperties) {
-	for key, value := range source {
-		if value != "" {
-			target[key] = value
-		}
+func applyOverrides(properties EnvironmentProperties, overrides EnvironmentProperties) {
+	for key, value := range overrides {
+		properties[key] = value
 	}
 }

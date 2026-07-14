@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-func TestLoadEnvironmentProperties_processEnvironmentOverridesFileValues(t *testing.T) {
+func TestLoadEnvironmentProperties_processOverridesFileValuesIncludingEmptyValues(t *testing.T) {
 	workDir := t.TempDir()
-	filePath := createEnvironmentFile(t, workDir, ".env", "URL=http://file\nUSER=file-user\nPASS=file-pass\n")
+	filePath := createEnvironmentFile(t, workDir, ".env", "URL=http://file\nUSER=file-user\nPASS=file-pass\nSTATIC_ONLY=file-only\n")
 
 	properties, err := LoadEnvironmentProperties(
 		filePath,
-		EnvironmentProperties{"URL": "http://process", "PASS": ""},
+		EnvironmentProperties{"URL": "http://process", "USER": "process-user", "PASS": ""},
 	)
 	if err != nil {
 		t.Fatalf("LoadEnvironmentProperties() error = %v", err)
@@ -21,11 +21,14 @@ func TestLoadEnvironmentProperties_processEnvironmentOverridesFileValues(t *test
 	if properties["URL"] != "http://process" {
 		t.Errorf("URL = %q, want %q", properties["URL"], "http://process")
 	}
-	if properties["USER"] != "file-user" {
-		t.Errorf("USER = %q, want %q", properties["USER"], "file-user")
+	if properties["USER"] != "process-user" {
+		t.Errorf("USER = %q, want %q", properties["USER"], "process-user")
 	}
-	if properties["PASS"] != "file-pass" {
-		t.Errorf("PASS = %q, want %q", properties["PASS"], "file-pass")
+	if properties["PASS"] != "" {
+		t.Errorf("PASS = %q, want empty string", properties["PASS"])
+	}
+	if properties["STATIC_ONLY"] != "file-only" {
+		t.Errorf("STATIC_ONLY = %q, want %q", properties["STATIC_ONLY"], "file-only")
 	}
 }
 
