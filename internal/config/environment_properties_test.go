@@ -7,15 +7,16 @@ import (
 )
 
 func TestLoadEnvironmentProperties_osOverridesFileValuesIncludingEmptyValues(t *testing.T) {
-	fileProperties := EnvironmentProperties{
-		"URL":         "http://file",
-		"USER":        "file-user",
-		"PASS":        "file-pass",
-		"STATIC_ONLY": "file-only",
-	}
-	osProperties := EnvironmentProperties{"URL": "http://process", "USER": "process-user", "PASS": ""}
+	filePath := createEnvironmentFile(t, t.TempDir(), ".env",
+		"URL=http://file\nUSER=file-user\nPASS=file-pass\nSTATIC_ONLY=file-only\n")
+	t.Setenv("URL", "http://process")
+	t.Setenv("USER", "process-user")
+	t.Setenv("PASS", "")
 
-	properties := LoadEnvironmentProperties(fileProperties, osProperties)
+	properties, err := LoadEnvironmentProperties(filePath)
+	if err != nil {
+		t.Fatalf("LoadEnvironmentProperties() error = %v", err)
+	}
 
 	if properties["URL"] != "http://process" {
 		t.Errorf("URL = %q, want %q", properties["URL"], "http://process")
@@ -34,9 +35,9 @@ func TestLoadEnvironmentProperties_osOverridesFileValuesIncludingEmptyValues(t *
 func TestReadFileEnvProperties_parsesQuotedValuesAndIgnoresComments(t *testing.T) {
 	filePath := createEnvironmentFile(t, t.TempDir(), ".env", "\n# comment\nURL = http://camera?token=one=two\nUSER=\"camera-user\"\nPASS='camera-pass'\nnot-an-entry\n")
 
-	properties, err := ReadFileEnvProperties(filePath)
+	properties, err := readFileEnvProperties(filePath)
 	if err != nil {
-		t.Fatalf("ReadFileEnvProperties() error = %v", err)
+		t.Fatalf("readFileEnvProperties() error = %v", err)
 	}
 
 	if properties["URL"] != "http://camera?token=one=two" {
@@ -54,9 +55,9 @@ func TestReadFileEnvProperties_parsesQuotedValuesAndIgnoresComments(t *testing.T
 }
 
 func TestReadFileEnvProperties_missingFile_returnsEmptyProperties(t *testing.T) {
-	properties, err := ReadFileEnvProperties(filepath.Join(t.TempDir(), ".env"))
+	properties, err := readFileEnvProperties(filepath.Join(t.TempDir(), ".env"))
 	if err != nil {
-		t.Fatalf("ReadFileEnvProperties() error = %v", err)
+		t.Fatalf("readFileEnvProperties() error = %v", err)
 	}
 	if len(properties) != 0 {
 		t.Errorf("len(properties) = %d, want 0", len(properties))
