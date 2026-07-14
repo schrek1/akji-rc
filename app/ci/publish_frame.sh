@@ -13,6 +13,7 @@ command -v python3 >/dev/null 2>&1 || fail "python3 not found"
 API_URL="https://uguu.se/upload"
 
 log "Uploading frame to Uguu..."
+log "Note: If the resulting URL is blocked in your browser, it might be due to corporate proxy or ISP filters."
 
 MAX_RETRIES=3
 RETRY_DELAY=5
