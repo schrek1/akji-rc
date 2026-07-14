@@ -8,29 +8,19 @@ import (
 
 type EnvironmentProperties map[string]string
 
-// LoadEnvironmentProperties loads file properties and applies process properties as overrides.
-func LoadEnvironmentProperties(filePath string, processEnvironment EnvironmentProperties) (EnvironmentProperties, error) {
-	fileProperties, err := readEnvironmentPropertiesFile(filePath)
+// LoadEnvironmentProperties merges file and OS properties, with OS properties overriding file properties.
+func LoadEnvironmentProperties(envPropertiesFilePath string) (EnvironmentProperties, error) {
+	envProperties, err := readFileEnvProperties(envPropertiesFilePath)
 	if err != nil {
-		return nil, err
+		return EnvironmentProperties{}, err
 	}
 
-	applyOverrides(fileProperties, processEnvironment)
-	return fileProperties, nil
+	applyOverrides(envProperties, readOsEnvProperties())
+
+	return envProperties, nil
 }
 
-func ReadProcessEnvironmentProperties() EnvironmentProperties {
-	processProperties := EnvironmentProperties{}
-	for _, environmentEntry := range os.Environ() {
-		key, value, found := strings.Cut(environmentEntry, "=")
-		if found {
-			processProperties[key] = value
-		}
-	}
-	return processProperties
-}
-
-func readEnvironmentPropertiesFile(filePath string) (EnvironmentProperties, error) {
+func readFileEnvProperties(filePath string) (EnvironmentProperties, error) {
 	environmentFile, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -48,6 +38,17 @@ func readEnvironmentPropertiesFile(filePath string) (EnvironmentProperties, erro
 		return nil, err
 	}
 	return fileProperties, nil
+}
+
+func readOsEnvProperties() EnvironmentProperties {
+	processProperties := EnvironmentProperties{}
+	for _, environmentEntry := range os.Environ() {
+		key, value, found := strings.Cut(environmentEntry, "=")
+		if found {
+			processProperties[key] = value
+		}
+	}
+	return processProperties
 }
 
 func readEnvironmentProperties(scanner *bufio.Scanner, properties EnvironmentProperties) {

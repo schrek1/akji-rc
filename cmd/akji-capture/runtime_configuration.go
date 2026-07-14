@@ -8,10 +8,7 @@ import (
 )
 
 func loadCaptureConfiguration(workDir string) (capture.Configuration, error) {
-	properties, err := config.LoadEnvironmentProperties(
-		filepath.Join(workDir, "app", ".env"),
-		config.ReadProcessEnvironmentProperties(),
-	)
+	properties, err := config.LoadEnvironmentProperties(filepath.Join(workDir, "app", ".env"))
 	if err != nil {
 		return capture.Configuration{}, err
 	}

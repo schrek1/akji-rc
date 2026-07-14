@@ -6,17 +6,16 @@ import (
 	"testing"
 )
 
-func TestLoadEnvironmentProperties_processOverridesFileValuesIncludingEmptyValues(t *testing.T) {
-	workDir := t.TempDir()
-	filePath := createEnvironmentFile(t, workDir, ".env", "URL=http://file\nUSER=file-user\nPASS=file-pass\nSTATIC_ONLY=file-only\n")
-
-	properties, err := LoadEnvironmentProperties(
-		filePath,
-		EnvironmentProperties{"URL": "http://process", "USER": "process-user", "PASS": ""},
-	)
-	if err != nil {
-		t.Fatalf("LoadEnvironmentProperties() error = %v", err)
+func TestLoadEnvironmentProperties_osOverridesFileValuesIncludingEmptyValues(t *testing.T) {
+	fileProperties := EnvironmentProperties{
+		"URL":         "http://file",
+		"USER":        "file-user",
+		"PASS":        "file-pass",
+		"STATIC_ONLY": "file-only",
 	}
+	osProperties := EnvironmentProperties{"URL": "http://process", "USER": "process-user", "PASS": ""}
+
+	properties := LoadEnvironmentProperties(fileProperties, osProperties)
 
 	if properties["URL"] != "http://process" {
 		t.Errorf("URL = %q, want %q", properties["URL"], "http://process")
@@ -32,12 +31,12 @@ func TestLoadEnvironmentProperties_processOverridesFileValuesIncludingEmptyValue
 	}
 }
 
-func TestLoadEnvironmentProperties_parsesQuotedValuesAndIgnoresComments(t *testing.T) {
+func TestReadFileEnvProperties_parsesQuotedValuesAndIgnoresComments(t *testing.T) {
 	filePath := createEnvironmentFile(t, t.TempDir(), ".env", "\n# comment\nURL = http://camera?token=one=two\nUSER=\"camera-user\"\nPASS='camera-pass'\nnot-an-entry\n")
 
-	properties, err := LoadEnvironmentProperties(filePath, EnvironmentProperties{})
+	properties, err := ReadFileEnvProperties(filePath)
 	if err != nil {
-		t.Fatalf("LoadEnvironmentProperties() error = %v", err)
+		t.Fatalf("ReadFileEnvProperties() error = %v", err)
 	}
 
 	if properties["URL"] != "http://camera?token=one=two" {
@@ -54,16 +53,13 @@ func TestLoadEnvironmentProperties_parsesQuotedValuesAndIgnoresComments(t *testi
 	}
 }
 
-func TestLoadEnvironmentProperties_missingFile_returnsProcessEnvironment(t *testing.T) {
-	properties, err := LoadEnvironmentProperties(
-		filepath.Join(t.TempDir(), ".env"),
-		EnvironmentProperties{"URL": "http://process"},
-	)
+func TestReadFileEnvProperties_missingFile_returnsEmptyProperties(t *testing.T) {
+	properties, err := ReadFileEnvProperties(filepath.Join(t.TempDir(), ".env"))
 	if err != nil {
-		t.Fatalf("LoadEnvironmentProperties() error = %v", err)
+		t.Fatalf("ReadFileEnvProperties() error = %v", err)
 	}
-	if properties["URL"] != "http://process" {
-		t.Errorf("URL = %q, want %q", properties["URL"], "http://process")
+	if len(properties) != 0 {
+		t.Errorf("len(properties) = %d, want 0", len(properties))
 	}
 }
 
