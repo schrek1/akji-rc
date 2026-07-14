@@ -10,7 +10,7 @@ var (
 	jpegEOI = []byte{0xff, 0xd9}
 )
 
-func ExtractJPEG(source []byte) ([]byte, error) {
+func ExtractJPEGFrame(source []byte) ([]byte, error) {
 	startOffsets := markerOffsets(source, jpegSOI)
 	endOffsets := markerOffsets(source, jpegEOI)
 	if !hasCompleteJPEGMarkers(startOffsets, endOffsets) {

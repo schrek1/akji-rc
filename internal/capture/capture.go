@@ -17,7 +17,7 @@ func CaptureToFile(configuration Configuration, outputPath string) (CaptureResul
 		return CaptureResult{}, err
 	}
 
-	jpegFrame, err := ExtractJPEG(mjpegStream)
+	jpegFrame, err := ExtractJPEGFrame(mjpegStream)
 	if err != nil {
 		return CaptureResult{}, removeInvalidCaptureOutput(outputPath, err)
 	}

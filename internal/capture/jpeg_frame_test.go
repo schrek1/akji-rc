@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-func TestExtractJPEG_validMockData_extractsFrameWithMarkers(t *testing.T) {
+func TestExtractJPEGFrame_validMockData_extractsFrameWithMarkers(t *testing.T) {
 	source := []byte("some junk\xff\xd8\xffimage data here\xff\xd9more junk")
 
-	frame, err := ExtractJPEG(source)
+	frame, err := ExtractJPEGFrame(source)
 	if err != nil {
-		t.Fatalf("ExtractJPEG() error = %v", err)
+		t.Fatalf("ExtractJPEGFrame() error = %v", err)
 	}
 
 	if !bytes.HasPrefix(frame, jpegSOI) {
@@ -25,21 +25,21 @@ func TestExtractJPEG_validMockData_extractsFrameWithMarkers(t *testing.T) {
 	}
 }
 
-func TestExtractJPEG_missingEOI_returnsError(t *testing.T) {
+func TestExtractJPEGFrame_missingEOI_returnsError(t *testing.T) {
 	source := []byte("some junk\xff\xd8\xffimage data without end")
 
-	frame, err := ExtractJPEG(source)
+	frame, err := ExtractJPEGFrame(source)
 	if err == nil {
-		t.Fatalf("ExtractJPEG() error = nil, frame = %q", frame)
+		t.Fatalf("ExtractJPEGFrame() error = nil, frame = %q", frame)
 	}
 }
 
-func TestExtractJPEG_multipleFrames_picksSameMiddleFrameAsShellScript(t *testing.T) {
+func TestExtractJPEGFrame_multipleFrames_picksSameMiddleFrameAsShellScript(t *testing.T) {
 	source := []byte("AA\xff\xd8\xffF1\xff\xd9BB\xff\xd8\xffF2\xff\xd9CC\xff\xd8\xffF3\xff\xd9DD\xff\xd8\xffF4\xff\xd9")
 
-	frame, err := ExtractJPEG(source)
+	frame, err := ExtractJPEGFrame(source)
 	if err != nil {
-		t.Fatalf("ExtractJPEG() error = %v", err)
+		t.Fatalf("ExtractJPEGFrame() error = %v", err)
 	}
 
 	if !bytes.Contains(frame, []byte("F2")) {
@@ -47,12 +47,12 @@ func TestExtractJPEG_multipleFrames_picksSameMiddleFrameAsShellScript(t *testing
 	}
 }
 
-func TestExtractJPEG_ciMockData_extractsFrame(t *testing.T) {
+func TestExtractJPEGFrame_ciMockData_extractsFrame(t *testing.T) {
 	source := []byte("\xff\xd8\xffCI_DATA\xff\xd9")
 
-	frame, err := ExtractJPEG(source)
+	frame, err := ExtractJPEGFrame(source)
 	if err != nil {
-		t.Fatalf("ExtractJPEG() error = %v", err)
+		t.Fatalf("ExtractJPEGFrame() error = %v", err)
 	}
 
 	if !bytes.Equal(frame, source) {
@@ -60,12 +60,12 @@ func TestExtractJPEG_ciMockData_extractsFrame(t *testing.T) {
 	}
 }
 
-func TestExtractJPEG_ignoresEndMarkerBeforeFrameStart(t *testing.T) {
+func TestExtractJPEGFrame_ignoresEndMarkerBeforeFrameStart(t *testing.T) {
 	source := []byte("\xff\xd9before\xff\xd8\xffFRAME\xff\xd9")
 
-	frame, err := ExtractJPEG(source)
+	frame, err := ExtractJPEGFrame(source)
 	if err != nil {
-		t.Fatalf("ExtractJPEG() error = %v", err)
+		t.Fatalf("ExtractJPEGFrame() error = %v", err)
 	}
 
 	expectedFrame := []byte("\xff\xd8\xffFRAME\xff\xd9")
